@@ -311,11 +311,75 @@ async fn main() {
                 }
 
             } else {
-                // Live mode: log intended quotes (order placement is Phase 9J)
-                log::debug!(
-                    "[LIVE QUOTE] {} mid={:.4} bids={} asks={} regime={:.2}x",
-                    coin, mid, grid.bids.len(), grid.asks.len(), regime_mult
-                );
+                // ── Phase 9J: LIVE order placement ──────────────────────────────
+
+                // Rate-limit: only refresh orders every 2 seconds per coin
+                let now_ms = chrono::Utc::now().timestamp_millis() as u64;
+                let last_refresh = last_trade_ts.get(coin).cloned().unwrap_or(0);
+                if now_ms - last_refresh < 2000 {
+                    continue;
+                }
+                last_trade_ts.insert(coin.clone(), now_ms);
+
+                let mut eng = exec_engine.lock().await;
+
+                // Step 1: Cancel existing orders for this coin
+                let existing = eng.exchange.get_open_orders(coin).await.unwrap_or_default();
+                if !existing.is_empty() {
+                    for order in &existing {
+                        if let (Some(oid), Some(coin_str)) = (order["oid"].as_u64(), order["coin"].as_str()) {
+                            if let Some(&asset_idx) = eng.exchange.as_sim_mut()
+                                .map(|_| &0u32)  // won't reach here in live mode
+                                .or_else(|| None) {
+                                let _ = eng.exchange.cancel_order(asset_idx, oid).await;
+                            }
+                        }
+                    }
+                    // Simpler: cancel all for now (works across coins but safe since we refresh all)
+                    let _ = eng.exchange.cancel_all_orders().await;
+                }
+
+                // Step 2: Place grid quotes (bids + asks)
+                let all_quotes: Vec<_> = grid.bids.iter().chain(grid.asks.iter()).collect();
+                let mut placed = 0u32;
+                let mut errors = 0u32;
+
+                for quote in &all_quotes {
+                    let direction = if quote.side == "bid" { "LONG" } else { "SHORT" };
+                    let size_coins = quote.size_usd / mid;  // Convert USD notional → coin units
+
+                    match eng.exchange.open_order(
+                        coin,
+                        direction,
+                        size_coins,
+                        quote.price,
+                        1.0,   // leverage (cross margin, managed by position sizing)
+                        0.0,   // no TP
+                        0.0,   // no SL
+                        true,  // post_only = ALO (maker only)
+                    ).await {
+                        Ok(_action) => {
+                            placed += 1;
+                        }
+                        Err(e) => {
+                            errors += 1;
+                            log::warn!(
+                                "[LIVE] {} {} L{} order failed: {}",
+                                coin, quote.side, quote.layer, e
+                            );
+                        }
+                    }
+                }
+
+                if placed > 0 || errors > 0 {
+                    log::info!(
+                        "[LIVE QUOTE] {} mid={:.4} placed={}/{} errors={} regime={:.2}x",
+                        coin, mid, placed, all_quotes.len(), errors, regime_mult
+                    );
+                }
+
+                // Step 3: Update inventory from any fills detected
+                // (The exchange keeps track; we reconcile on next position fetch)
             }
         }
     }

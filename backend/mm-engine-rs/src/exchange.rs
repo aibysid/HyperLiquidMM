@@ -447,12 +447,8 @@ impl ExchangeClient for LiveExchange {
     async fn open_order(&mut self, coin: &str, direction: &str, size: f64, price: f64, leverage: f64, tp: f64, sl: f64, post_only: bool) -> Result<TradeAction, OrderError> {
         let is_buy = direction == "LONG";
         
-        // Idempotency: Check if we already have an open order for this coin
-        let existing_orders = self.get_open_orders(coin).await?;
-        if !existing_orders.is_empty() {
-             log::warn!("IDEMPOTENCY: Blocking new order for {} because {} orders are already open.", coin, existing_orders.len());
-             return Err(OrderError::InvalidOrder(format!("Open orders already exist for {}", coin)));
-        }
+        // Note: Idempotency is handled by the caller (main loop does cancel-then-replace).
+        // We allow multiple orders per coin for MM grid quoting.
 
         let asset_idx = *self.coin_to_asset.get(coin).ok_or_else(|| OrderError::InvalidOrder(format!("Unknown coin: {}", coin)))?;
         
