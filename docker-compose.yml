@@ -1,0 +1,75 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.mm.yml — Market Maker Bot (isolated from directional bot)
+#
+# Usage:
+#   Shadow mode (safe, default):
+#     ./scripts/start_mm_bot.sh
+#
+#   Live mode (requires explicit confirmation in start script):
+#     MM_SHADOW_MODE=false ./scripts/start_mm_bot.sh
+#
+# Credentials:
+#   All secrets come from backend/mm-engine-rs/.env — never committed to git.
+#   Required keys: HL_ADDRESS, HL_PRIVATE_KEY
+#   Optional:      REDIS_URL (defaults to internal mm-redis service)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Redis: Screener ↔ Engine IPC ──────────────────────────────────────────
+  mm-redis:
+    image: redis:7-alpine
+    container_name: mm_redis
+    ports:
+      - "6380:6379"   # Host port 6380 avoids clash with directional bot's Redis on 6379
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Market Maker Engine (Rust) ─────────────────────────────────────────────
+  mm-engine:
+    build:
+      context: ./backend/mm-engine-rs
+      dockerfile: Dockerfile
+    container_name: mm_engine
+    env_file:
+      - ./backend/mm-engine-rs/.env    # HL_ADDRESS, HL_PRIVATE_KEY, etc.
+    depends_on:
+      mm-redis:
+        condition: service_healthy
+    environment:
+      - RUST_LOG=info
+      - REDIS_URL=redis://mm-redis:6379
+      - MM_SHADOW_MODE=${MM_SHADOW_MODE:-true}   # Default: shadow. Override to go live.
+      - MM_HARVEST_TICKS=true
+    restart: unless-stopped
+    volumes:
+      # Tick data persisted on the host — survives container restarts/rebuilds.
+      # This is your growing proprietary dataset.
+      - ./data/mm_ticks:/app/data/ticks
+      # Engine logs
+      - ./logs/mm:/app/logs
+
+  # ── Python Screener (asset selection + per-asset config publisher) ──────────
+  # Publishes Vec<MmAssetConfig> to Redis channel mm:asset_config every 30s.
+  # Subscribes to mm:shadow_fills and mm:engine_status for monitoring.
+  mm-screener:
+    build:
+      context: .
+      dockerfile: scripts/Dockerfile.mm_screener
+    container_name: mm_screener
+    env_file:
+      - ./backend/mm-engine-rs/.env
+    depends_on:
+      mm-redis:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://mm-redis:6379
+    restart: unless-stopped
+    volumes:
+      - ./logs/mm:/app/logs

@@ -1,0 +1,32 @@
+# ─── Secrets — NEVER commit ───────────────────────────────────────────────────
+.env
+*.pem
+*.key
+
+# ─── Rust build artifacts ─────────────────────────────────────────────────────
+target/
+**/*.rs.bk
+
+# ─── Tick data — too large for git, mount as Docker volume ────────────────────
+data/ticks/
+data/parquet/
+*.csv
+*.parquet
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ─── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# ─── OS noise ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Setup helper (not needed in repo) ───────────────────────────────────────
+_setup.py

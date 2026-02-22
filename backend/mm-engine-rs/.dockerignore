@@ -1,0 +1,16 @@
+# Build artifacts — large, not needed in image (builder stage handles this)
+target/
+
+# Secrets — NEVER bake into the image
+.env
+*.pem
+*.key
+
+# Developer noise
+.git/
+.gitignore
+*.md
+
+# Tick data — mounted as a volume at runtime
+data/
+logs/
