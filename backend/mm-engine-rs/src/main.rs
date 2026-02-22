@@ -102,9 +102,9 @@ async fn main() {
     };
 
     // ─── Phase 9H: Redis screener subscriber ──────────────────────────────────
-    let default_configs: Vec<MmAssetConfig> = coins.iter()
-        .map(|c| MmAssetConfig { asset: c.clone(), ..MmAssetConfig::default() })
-        .collect();
+    // Start with EMPTY config — only quote coins the screener explicitly selects.
+    // Previously this seeded all 30 coins, causing unwanted trades on SOL/ETH/etc.
+    let default_configs: Vec<MmAssetConfig> = Vec::new();
     let (config_tx, config_rx) = tokio::sync::watch::channel(default_configs);
 
     match MmScreenerSubscriber::new(&redis_url) {
