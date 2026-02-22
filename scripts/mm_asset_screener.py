@@ -279,19 +279,23 @@ def compute_fill_activity_bonus(coin_name, tick_data_dir, lookback_ticks=2000):
         return 1.0
 
 
-def discover_priority_coins(tick_data_dir, min_change_rate=0.40, top_n=5):
+def discover_priority_coins(tick_data_dir, min_change_rate=0.40,
+                            min_balance_ratio=0.30, top_n=5):
     """
     Dynamically discover high-throughput coins from ALL tick data.
 
-    Scans every coin's CSV, counts bid/ask change frequency,
-    and returns a set of coins that exceed the threshold.
+    Scans every coin's CSV, counts bid AND ask change frequency SEPARATELY,
+    and returns coins that are both:
+      1. Active enough (total change rate ≥ threshold)
+      2. Balanced (both bid and ask sides are changing, not just one)
 
-    This replaces the hardcoded PRIORITY_COINS list — no manual
-    curation needed. Runs once per screener cycle (~60s).
+    A coin where only asks change (price crashing) or only bids change
+    (price pumping) will NOT qualify — we need two-sided flow for MM.
 
     Args:
         tick_data_dir: path to data/ticks/
-        min_change_rate: minimum book-change-rate to qualify (0.0-1.0)
+        min_change_rate: minimum total book-change-rate to qualify (0.0-1.0)
+        min_balance_ratio: min(bid_changes, ask_changes) / max(...) must exceed this
         top_n: max coins to promote
 
     Returns:
@@ -318,7 +322,8 @@ def discover_priority_coins(tick_data_dir, min_change_rate=0.40, top_n=5):
                 continue
 
             prev_bid, prev_ask = None, None
-            changes = 0
+            bid_changes = 0
+            ask_changes = 0
             total = 0
 
             for line in recent:
@@ -327,16 +332,27 @@ def discover_priority_coins(tick_data_dir, min_change_rate=0.40, top_n=5):
                     continue
                 bid, ask = parts[2], parts[3]
                 total += 1
-                if prev_bid is not None and (bid != prev_bid or ask != prev_ask):
-                    changes += 1
+                if prev_bid is not None:
+                    if bid != prev_bid:
+                        bid_changes += 1
+                    if ask != prev_ask:
+                        ask_changes += 1
                 prev_bid, prev_ask = bid, ask
 
             if total < 50:
                 continue
 
-            rate = changes / total
-            if rate >= min_change_rate:
-                candidates.append((coin_dir, rate))
+            total_changes = bid_changes + ask_changes
+            change_rate = total_changes / (total * 2)  # Normalized: both sides
+
+            # Balance check: are BOTH sides active?
+            # A coin where only asks move (trending down) is dangerous for MM
+            max_side = max(bid_changes, ask_changes)
+            min_side = min(bid_changes, ask_changes)
+            balance = min_side / max_side if max_side > 0 else 0
+
+            if change_rate >= min_change_rate and balance >= min_balance_ratio:
+                candidates.append((coin_dir, change_rate, balance))
 
         except Exception:
             continue
@@ -346,9 +362,14 @@ def discover_priority_coins(tick_data_dir, min_change_rate=0.40, top_n=5):
     priority = {c[0] for c in candidates[:top_n]}
 
     if priority:
-        names = ', '.join(sorted(priority))
-        log.info(f"Dynamic priority coins: {{{names}}} "
-                 f"(threshold={min_change_rate:.0%}, {len(candidates)} qualified)")
+        details = ', '.join(
+            f"{c[0]}({c[1]:.0%}rate/{c[2]:.0%}bal)"
+            for c in candidates[:top_n]
+        )
+        log.info(f"Dynamic priority coins: {details}")
+    else:
+        log.debug(f"No coins met priority threshold "
+                  f"(rate≥{min_change_rate:.0%}, balance≥{min_balance_ratio:.0%})")
 
     return priority
 
