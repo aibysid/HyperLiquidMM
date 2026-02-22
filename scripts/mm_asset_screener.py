@@ -44,7 +44,7 @@ DEFAULT_MIN_VOLUME_USD = 1_000_000      # $1M daily volume minimum (mid-tier swe
 DEFAULT_MAX_COINS = 3                    # Max coins (limited by $50 account)
 DEFAULT_CORRELATION_THRESHOLD = 0.85     # Price correlation cutoff
 DEFAULT_MAX_PER_CLUSTER = 1              # Max coins from one correlated group (tight for small acct)
-DEFAULT_MIN_SPREAD_BPS = 0.5             # Minimum viable spread (exchange floor)
+DEFAULT_MIN_SPREAD_BPS = 4.5             # Maker fees are 1.44 bps each way (2.88 round-trip). Minimum spread must clear this.
 DEFAULT_MAX_INV_USD = 20.0               # Max inventory per coin ($50 total / 3 coins ≈ $16, with buffer)
 DEFAULT_MIN_ORDER_USD = 10.0             # Minimum order size (Hyperliquid floor ~$10)
 

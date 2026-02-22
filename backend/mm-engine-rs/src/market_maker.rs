@@ -106,7 +106,13 @@ pub fn compute_quote_grid(
     // Inventory skew: fraction of max inventory we currently hold.
     // Clamped to [-1, 1]. Skew shifts asks down / bids down when long.
     let inv_fraction = (inv_usd / config.max_inv_usd).clamp(-1.0, 1.0);
-    let skew_amount  = inv_fraction * effective_spread * 1.5;
+    let mut skew_amount  = inv_fraction * effective_spread * 1.5;
+
+    // CAP SKEW TO PREVENT FEE LOSSES ON SOFT EXITS
+    // Maker fees are 1.44 bps. Exits must be at least 1.5 bps away from mid to be profitable.
+    let min_distance_from_mid = mid_price * (1.5 / 10_000.0);
+    let max_allowed_skew = (effective_spread - min_distance_from_mid).max(0.0);
+    skew_amount = skew_amount.clamp(-max_allowed_skew, max_allowed_skew);
 
     // Layer spreads: L2 = 2.5x L1, L3 = 5x L1
     let spreads = [

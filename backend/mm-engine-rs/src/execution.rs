@@ -100,10 +100,17 @@ impl OfiCalculator {
     /// +1.0 = pure taker buy pressure, -1.0 = pure taker sell pressure.
     pub fn ofi_fraction(&self) -> f64 {
         if self.window.is_empty() { return 0.0; }
+        
+        // Require at least 20 trades before making an OFI halt judgment
+        if self.window.len() < 20 { return 0.0; }
+
         let buy_vol: f64  = self.window.iter().filter(|(b, _)| *b).map(|(_, s)| s).sum();
         let sell_vol: f64 = self.window.iter().filter(|(b, _)| !b).map(|(_, s)| s).sum();
         let total = buy_vol + sell_vol;
-        if total <= 0.0 { return 0.0; }
+        
+        // Require at least $5,000 in tracked timeframe volume to matter
+        if total <= 5_000.0 { return 0.0; }
+        
         (buy_vol - sell_vol) / total
     }
 
@@ -165,7 +172,7 @@ pub struct MmExecutionEngine {
     pub exchange: Box<dyn ExchangeClient>,
     pub risk_manager: RiskManager,
     pub stats: SessionStats,
-    pub ofi: OfiCalculator,
+    pub ofi_trackers: HashMap<String, OfiCalculator>,
     pub inventory: InternalInventory,
     pub session_id: String,
     /// When true, the engine refuses to quote until manually cleared.
@@ -180,13 +187,12 @@ impl MmExecutionEngine {
     ) -> Self {
         let balance = exchange.get_balance().await.unwrap_or(0.0);
         let risk_manager = RiskManager::new(RiskConfig::default(), balance);
-        let ofi = OfiCalculator::new(200); // 200-trade rolling window
         Self {
             config,
             exchange,
             risk_manager,
             stats: SessionStats { starting_balance: balance, ..Default::default() },
-            ofi,
+            ofi_trackers: HashMap::new(),
             inventory: InternalInventory::default(),
             session_id,
             halted: false,
@@ -292,18 +298,27 @@ impl MmExecutionEngine {
     /// Should be called for every trade event received from the WS `trades` channel.
     pub fn record_taker_trade(&mut self, coin: &str, is_buy: bool, price: f64, size: f64) {
         let size_usd = price * size;
-        self.ofi.record(is_buy, size_usd);
+        let tracker = self.ofi_trackers.entry(coin.to_string()).or_insert_with(|| OfiCalculator::new(200));
+        tracker.record(is_buy, size_usd);
     }
 
     /// Returns true if the OFI is sufficiently one-sided to warrant cancelling bids.
     /// Called in the main quoting loop before placing new bid quotes.
-    pub fn ofi_bids_blocked(&self) -> bool {
-        self.ofi.should_cancel_bids(self.config.ofi_halt_threshold)
+    pub fn ofi_bids_blocked(&self, coin: &str) -> bool {
+        if let Some(tracker) = self.ofi_trackers.get(coin) {
+            tracker.should_cancel_bids(self.config.ofi_halt_threshold)
+        } else {
+            false
+        }
     }
 
     /// Returns true if the OFI is sufficiently one-sided to warrant cancelling asks.
-    pub fn ofi_asks_blocked(&self) -> bool {
-        self.ofi.should_cancel_asks(self.config.ofi_halt_threshold)
+    pub fn ofi_asks_blocked(&self, coin: &str) -> bool {
+        if let Some(tracker) = self.ofi_trackers.get(coin) {
+            tracker.should_cancel_asks(self.config.ofi_halt_threshold)
+        } else {
+            false
+        }
     }
 
     // ─── Phase 9G: Cancel-to-Fill Ratio Guard ────────────────────────────────

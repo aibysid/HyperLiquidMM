@@ -115,6 +115,9 @@ pub trait ExchangeClient: Send + Sync {
     /// Called on: WS reconnect (before reconcile), OFI spike, global drawdown stop, chain stall.
     async fn cancel_all_orders(&mut self) -> Result<u64, OrderError>;
 
+    /// Cancel only orders for a specific coin. Returns count cancelled.
+    async fn cancel_coin_orders(&mut self, coin: &str) -> Result<u64, OrderError>;
+
     // For simulation/backtesting only
     fn as_sim_mut(&mut self) -> Option<&mut SimExchange> { None }
 }
@@ -264,6 +267,10 @@ impl ExchangeClient for SimExchange {
 
     async fn cancel_all_orders(&mut self) -> Result<u64, OrderError> {
         // Sim has no resting orders
+        Ok(0)
+    }
+
+    async fn cancel_coin_orders(&mut self, _coin: &str) -> Result<u64, OrderError> {
         Ok(0)
     }
 
@@ -665,6 +672,45 @@ impl ExchangeClient for LiveExchange {
             }
         }
         log::warn!("[CANCEL ALL] Done. Cancelled {}/{} orders.", cancelled, total);
+        Ok(cancelled)
+    }
+
+    /// Cancel only orders for a specific coin.
+    async fn cancel_coin_orders(&mut self, coin: &str) -> Result<u64, OrderError> {
+        let orders = self.get_open_orders(coin).await?;
+        if orders.is_empty() {
+            return Ok(0);
+        }
+        let total = orders.len();
+        let mut cancelled = 0u64;
+
+        for order in &orders {
+            let oid = match order["oid"].as_u64() { Some(o) => o, None => continue };
+            let order_coin = order["coin"].as_str().unwrap_or(coin);
+            let asset_idx = match self.coin_to_asset.get(order_coin) {
+                Some(&idx) => idx,
+                None => continue,
+            };
+
+            let nonce = chrono::Utc::now().timestamp_millis() as u64 + cancelled;
+            match crate::signing::sign_cancel_action(&self.private_key, asset_idx, oid, nonce).await {
+                Ok((sig, action_json)) => {
+                    match self.post_exchange(action_json, nonce, sig).await {
+                        Ok(res) if res["status"].as_str() != Some("err") => {
+                            cancelled += 1;
+                        }
+                        Ok(res) => {
+                            log::warn!("[CANCEL COIN] {} oid={} error: {}", order_coin, oid, res["response"]);
+                        }
+                        Err(e) => log::warn!("[CANCEL COIN] {} oid={} network error: {}", order_coin, oid, e),
+                    }
+                }
+                Err(e) => log::warn!("[CANCEL COIN] {} oid={} signing error: {}", order_coin, oid, e),
+            }
+        }
+        if cancelled > 0 {
+            log::info!("[CANCEL COIN] {} — cancelled {}/{}", coin, cancelled, total);
+        }
         Ok(cancelled)
     }
 
