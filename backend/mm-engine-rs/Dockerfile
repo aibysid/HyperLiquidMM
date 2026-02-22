@@ -1,5 +1,5 @@
 # ─── Builder Stage ─────────────────────────────────────────────────────────────
-FROM rust:1.82-slim as builder
+FROM rust:1.85-slim as builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \

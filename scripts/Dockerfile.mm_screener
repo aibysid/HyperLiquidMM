@@ -1,0 +1,23 @@
+# ─── Screener Container ─────────────────────────────────────────────────────
+# Lightweight Python image for the Phase 9H Maker Edge Screener.
+# Publishes Vec<MmAssetConfig> to Redis `mm:asset_config` every 60s.
+#
+# Build context is the project root (set in docker-compose.yml).
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install Python dependencies (layer cached unless requirements change)
+COPY scripts/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy screener and analysis scripts
+COPY scripts/ ./scripts/
+
+# Tick data is mounted at runtime via Docker volume (docker-compose.yml)
+# so the screener can calibrate spreads from historical data.
+# Directory will be created by Docker volume mount.
+
+CMD ["python3", "scripts/mm_asset_screener.py"]

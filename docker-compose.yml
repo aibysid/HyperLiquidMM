@@ -1,14 +1,22 @@
-version: "3.9"
-
 # ─────────────────────────────────────────────────────────────────────────────
-# docker-compose.mm.yml — Market Maker Bot (isolated from directional bot)
+# docker-compose.yml — HyperLiquidMM Full Stack
 #
-# Usage:
+# All services in one place: Redis → Engine → Screener
+# Single command to start everything:
+#
 #   Shadow mode (safe, default):
-#     ./scripts/start_mm_bot.sh
+#     docker compose up -d
 #
-#   Live mode (requires explicit confirmation in start script):
-#     MM_SHADOW_MODE=false ./scripts/start_mm_bot.sh
+#   Live mode (requires explicit override):
+#     MM_SHADOW_MODE=false docker compose up -d
+#
+#   View logs:
+#     docker compose logs -f
+#     docker compose logs -f mm-engine      # Engine only
+#     docker compose logs -f mm-screener    # Screener only
+#
+#   Stop everything:
+#     docker compose down
 #
 # Credentials:
 #   All secrets come from backend/mm-engine-rs/.env — never committed to git.
@@ -51,13 +59,17 @@ services:
     volumes:
       # Tick data persisted on the host — survives container restarts/rebuilds.
       # This is your growing proprietary dataset.
-      - ./data/mm_ticks:/app/data/ticks
+      # Shared with mm-screener so it can calibrate spreads from historical ticks.
+      - mm_tick_data:/app/data/ticks
+      # Also persist to host for backtesting access outside of Docker
+      - ./data/mm_ticks:/app/data/host_ticks
       # Engine logs
       - ./logs/mm:/app/logs
 
   # ── Python Screener (asset selection + per-asset config publisher) ──────────
-  # Publishes Vec<MmAssetConfig> to Redis channel mm:asset_config every 30s.
-  # Subscribes to mm:shadow_fills and mm:engine_status for monitoring.
+  # Publishes Vec<MmAssetConfig> to Redis channel mm:asset_config every 60s.
+  # Fetches live market data from Hyperliquid API, scores coins by Maker Edge,
+  # and computes per-coin spread calibration.
   mm-screener:
     build:
       context: .
@@ -68,8 +80,20 @@ services:
     depends_on:
       mm-redis:
         condition: service_healthy
+      mm-engine:
+        condition: service_started
     environment:
       - REDIS_URL=redis://mm-redis:6379
     restart: unless-stopped
     volumes:
+      # Mount shared tick data volume (read-only) for spread calibration
+      - mm_tick_data:/app/data/ticks:ro
+      # Screener logs
       - ./logs/mm:/app/logs
+
+# ── Named volumes ──────────────────────────────────────────────────────────
+# Named volume ensures tick data persists across container rebuilds
+# and is shared between engine (writer) and screener (reader).
+volumes:
+  mm_tick_data:
+    driver: local

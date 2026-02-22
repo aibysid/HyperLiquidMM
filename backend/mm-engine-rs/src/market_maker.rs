@@ -37,8 +37,8 @@ impl Default for MmAssetConfig {
         Self {
             asset: "BTC".to_string(),
             tick_size: 0.1,
-            min_order_usd: 12.0,
-            max_inv_usd: 200.0,
+            min_order_usd: 10.0,   // Hyperliquid minimum ~$10
+            max_inv_usd: 20.0,     // Tight cap for small accounts ($50 total)
             base_spread_bps: 1.5,
             atr_fraction: 0.002,
             regime: "calm".to_string(),
