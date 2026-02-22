@@ -48,6 +48,12 @@ DEFAULT_MIN_SPREAD_BPS = 0.5             # Minimum viable spread (exchange floor
 DEFAULT_MAX_INV_USD = 20.0               # Max inventory per coin ($50 total / 3 coins ≈ $16, with buffer)
 DEFAULT_MIN_ORDER_USD = 10.0             # Minimum order size (Hyperliquid floor ~$10)
 
+# Priority coins: backtester-validated coins that get a guaranteed score bonus.
+# These have been empirically shown to produce balanced fills and good throughput.
+# Update this list as you accumulate more backtesting data.
+PRIORITY_COINS = {"PUMP", "kBONK"}       # Proven high fill balance in backtests
+PRIORITY_BONUS = 2.0                     # 2.0x score multiplier for priority coins
+
 # Tick data directories (relative to project root)
 TICK_CSV_DIR = "data/ticks"              # From engine harvester (CSV)
 TICK_PARQUET_DIR = "data/parquet"        # From csv_to_parquet.py
@@ -216,24 +222,79 @@ def _estimate_tick_size(mid_price):
         return 0.00000001   # Micro-cap memecoins
 
 
+def compute_fill_activity_bonus(coin_name, tick_data_dir, lookback_ticks=2000):
+    """
+    Reads the most recent harvested tick CSV for this coin and computes a
+    fill-activity bonus based on observed book activity.
+
+    Tracks BOTH mid-price changes AND bid/ask changes — takes the higher rate.
+    This catches micro-price coins (e.g., PUMP at $0.009) where mid barely moves
+    but the book is actively flipping.
+
+    Returns a multiplier between 1.0 (no data / quiet) and 2.5 (very active).
+    """
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    csv_path = os.path.join(tick_data_dir, coin_name, f"{today}.csv")
+
+    if not os.path.exists(csv_path):
+        return 1.0  # No data, no bonus
+
+    try:
+        # Read last N ticks — CSV format: ts,coin,bid,ask,mid,spread
+        mids = []
+        bids = []
+        asks = []
+        with open(csv_path, 'r') as f:
+            lines = f.readlines()
+        for line in lines[-lookback_ticks:]:
+            parts = line.strip().split(',')
+            if len(parts) >= 6:
+                try:
+                    bids.append(parts[2])   # Keep as string for exact comparison
+                    asks.append(parts[3])
+                    mids.append(float(parts[4]))
+                except (ValueError, IndexError):
+                    continue
+
+        n = len(mids)
+        if n < 10:
+            return 1.0
+
+        # Rate 1: mid-price changes (captures price movement)
+        mid_changes = sum(1 for i in range(1, n) if mids[i] != mids[i-1])
+        mid_rate = mid_changes / n
+
+        # Rate 2: bid OR ask changes (captures book activity even when mid is static)
+        book_changes = sum(1 for i in range(1, n) if bids[i] != bids[i-1] or asks[i] != asks[i-1])
+        book_rate = book_changes / n
+
+        # Use the HIGHER of the two rates
+        change_rate = max(mid_rate, book_rate)
+
+        # Map to multiplier: 0% change → 1.0x, 50%+ change → 2.5x
+        bonus = 1.0 + min(1.5, change_rate * 3.0)
+        return round(bonus, 3)
+
+    except Exception:
+        return 1.0
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 2. MAKER EDGE SCORING
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def compute_maker_edge(spread_bps, tick_size, mid_price, daily_volume):
+def compute_maker_edge(spread_bps, tick_size, mid_price, daily_volume,
+                      fill_activity: float = 1.0):
     """
     Maker Edge Score — ranks how profitable it is to provide liquidity.
 
     Components:
       1. spread_value: wider natural spread = more gross profit per fill.
-         Uses a smooth curve so even tight spreads (0.1-1bps) get non-zero scores,
-         while wider spreads (3-8bps) get proportionally rewarded.
-      2. tick_granularity: smaller tick/spread ratio = can place precise quotes
-         inside the spread. If tick_bps ≈ spread_bps, there's no room.
+      2. tick_granularity: smaller tick/spread ratio = can place precise quotes.
       3. volume_factor: log10(volume) — enough flow to get fills, capped benefit.
-         Mid-tier ($1M-$100M) is the sweet spot for a small MM.
-      4. competition_discount: ultra-high volume coins face HFT competition.
-         Discount BTC/ETH-class volumes to prefer mid-tier.
+      4. competition_discount: penalize ultra-high volume where HFTs dominate.
+      5. fill_activity: bonus from observed tick-data price-change frequency.
+         Coins with lots of real price action get a 1.0–1.6× multiplier.
 
     Returns: float score (higher = better for market making)
     """
@@ -242,9 +303,11 @@ def compute_maker_edge(spread_bps, tick_size, mid_price, daily_volume):
 
     tick_bps = (tick_size / mid_price) * 10_000
 
-    # 1. Spread value: smooth curve — even 0.5bps gives ~0.4, while 5bps gives ~3.5
-    #    Formula: spread * (1 - e^(-spread/2)) → saturates gently
-    spread_value = spread_bps * (1.0 - math.exp(-spread_bps / 2.0))
+    # 1. Spread value: smooth curve — cap effective spread at 6bps.
+    #    Beyond 6bps, fills become too rare to offset the benefit of a wider spread.
+    #    This prevents illiquid wide-spread coins from dominating the ranking.
+    effective_spread = min(spread_bps, 6.0)
+    spread_value = effective_spread * (1.0 - math.exp(-effective_spread / 2.0))
 
     # 2. Tick granularity: can we quote inside the spread?
     #    ratio close to 0 = very granular = good
@@ -268,7 +331,7 @@ def compute_maker_edge(spread_bps, tick_size, mid_price, daily_volume):
     else:
         competition = 0.8  # Too low volume: fills are rare
 
-    score = spread_value * granularity_factor * volume_factor * competition
+    score = spread_value * granularity_factor * volume_factor * competition * fill_activity
     return round(score, 4)
 
 
@@ -593,13 +656,27 @@ def run_screening_cycle(args, project_root="."):
         if coin["name"] in live_spreads:
             coin["estimated_spread_bps"] = live_spreads[coin["name"]]
 
-    # 4. Score by Maker Edge
+    # 4. Score by Maker Edge (with fill-activity bonus from tick data)
+    tick_data_dir = os.path.join(project_root, TICK_CSV_DIR)
+    activity_bonuses = {}
+    if os.path.isdir(tick_data_dir):
+        for coin in coins:
+            activity_bonuses[coin["name"]] = compute_fill_activity_bonus(
+                coin["name"], tick_data_dir
+            )
+
     for coin in coins:
+        coin["fill_activity"] = activity_bonuses.get(coin["name"], 1.0)
+
+        # Priority bonus: backtester-validated coins get a guaranteed multiplier
+        priority = PRIORITY_BONUS if coin["name"] in PRIORITY_COINS else 1.0
+
         coin["maker_edge"] = compute_maker_edge(
             spread_bps=coin["estimated_spread_bps"],
             tick_size=coin["tick_size"],
             mid_price=coin["mid_price"],
             daily_volume=coin["daily_volume"],
+            fill_activity=coin["fill_activity"] * priority,
         )
 
     # Sort by score descending
