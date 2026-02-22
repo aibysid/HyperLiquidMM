@@ -119,9 +119,13 @@ pub fn compute_quote_grid(
     let base_sz = config.min_order_usd.max(12.0);
     let sizes   = [base_sz, base_sz * 2.0, base_sz * 3.0];
 
+    // Max layers: 1 for small accounts ($50), increase to 3 for $500+
+    let max_layers: usize = std::env::var("MM_MAX_LAYERS")
+        .ok().and_then(|v| v.parse().ok()).unwrap_or(1);
+
     let mut grid = QuoteGrid::default();
 
-    for (i, (&sp, &sz)) in spreads.iter().zip(sizes.iter()).enumerate() {
+    for (i, (&sp, &sz)) in spreads.iter().zip(sizes.iter()).enumerate().take(max_layers) {
         let layer = (i + 1) as u8;
 
         // Bids: placed below mid, shifted down when long (Soft Exit)
