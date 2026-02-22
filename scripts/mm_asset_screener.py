@@ -48,11 +48,11 @@ DEFAULT_MIN_SPREAD_BPS = 0.5             # Minimum viable spread (exchange floor
 DEFAULT_MAX_INV_USD = 20.0               # Max inventory per coin ($50 total / 3 coins ≈ $16, with buffer)
 DEFAULT_MIN_ORDER_USD = 10.0             # Minimum order size (Hyperliquid floor ~$10)
 
-# Priority coins: backtester-validated coins that get a guaranteed score bonus.
-# These have been empirically shown to produce balanced fills and good throughput.
-# Update this list as you accumulate more backtesting data.
-PRIORITY_COINS = {"PUMP", "kBONK"}       # Proven high fill balance in backtests
-PRIORITY_BONUS = 2.0                     # 2.0x score multiplier for priority coins
+# Priority coins: dynamically discovered from tick data each cycle.
+# Coins with high book-activity get a score bonus. No manual curation needed.
+# Fallback list used only when no tick data exists yet.
+FALLBACK_PRIORITY_COINS = {"PUMP", "kBONK"}  # Initial seed before data exists
+PRIORITY_BONUS = 2.0                          # Score multiplier for priority coins
 
 # Tick data directories (relative to project root)
 TICK_CSV_DIR = "data/ticks"              # From engine harvester (CSV)
@@ -277,6 +277,80 @@ def compute_fill_activity_bonus(coin_name, tick_data_dir, lookback_ticks=2000):
 
     except Exception:
         return 1.0
+
+
+def discover_priority_coins(tick_data_dir, min_change_rate=0.40, top_n=5):
+    """
+    Dynamically discover high-throughput coins from ALL tick data.
+
+    Scans every coin's CSV, counts bid/ask change frequency,
+    and returns a set of coins that exceed the threshold.
+
+    This replaces the hardcoded PRIORITY_COINS list — no manual
+    curation needed. Runs once per screener cycle (~60s).
+
+    Args:
+        tick_data_dir: path to data/ticks/
+        min_change_rate: minimum book-change-rate to qualify (0.0-1.0)
+        top_n: max coins to promote
+
+    Returns:
+        set of coin names that qualify as priority
+    """
+    if not os.path.isdir(tick_data_dir):
+        return set()
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    candidates = []
+
+    for coin_dir in sorted(os.listdir(tick_data_dir)):
+        csv_path = os.path.join(tick_data_dir, coin_dir, f"{today}.csv")
+        if not os.path.isfile(csv_path):
+            continue
+
+        try:
+            with open(csv_path, 'r') as f:
+                lines = f.readlines()
+
+            # Use last 3000 ticks (~5 min) for freshness
+            recent = lines[-3000:]
+            if len(recent) < 100:
+                continue
+
+            prev_bid, prev_ask = None, None
+            changes = 0
+            total = 0
+
+            for line in recent:
+                parts = line.strip().split(',')
+                if len(parts) < 6:
+                    continue
+                bid, ask = parts[2], parts[3]
+                total += 1
+                if prev_bid is not None and (bid != prev_bid or ask != prev_ask):
+                    changes += 1
+                prev_bid, prev_ask = bid, ask
+
+            if total < 50:
+                continue
+
+            rate = changes / total
+            if rate >= min_change_rate:
+                candidates.append((coin_dir, rate))
+
+        except Exception:
+            continue
+
+    # Sort by change rate descending, take top N
+    candidates.sort(key=lambda x: x[1], reverse=True)
+    priority = {c[0] for c in candidates[:top_n]}
+
+    if priority:
+        names = ', '.join(sorted(priority))
+        log.info(f"Dynamic priority coins: {{{names}}} "
+                 f"(threshold={min_change_rate:.0%}, {len(candidates)} qualified)")
+
+    return priority
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -665,11 +739,18 @@ def run_screening_cycle(args, project_root="."):
                 coin["name"], tick_data_dir
             )
 
+    # ── Dynamic priority discovery from tick data ─────────────────────────
+    # Auto-detect high-throughput coins. Falls back to seed list if no data.
+    dynamic_priority = discover_priority_coins(tick_data_dir)
+    if not dynamic_priority:
+        dynamic_priority = FALLBACK_PRIORITY_COINS
+        log.info(f"No tick data for dynamic priority — using fallback: {FALLBACK_PRIORITY_COINS}")
+
     for coin in coins:
         coin["fill_activity"] = activity_bonuses.get(coin["name"], 1.0)
 
-        # Priority bonus: backtester-validated coins get a guaranteed multiplier
-        priority = PRIORITY_BONUS if coin["name"] in PRIORITY_COINS else 1.0
+        # Dynamic priority bonus — auto-detected each cycle from tick data
+        priority = PRIORITY_BONUS if coin["name"] in dynamic_priority else 1.0
 
         coin["maker_edge"] = compute_maker_edge(
             spread_bps=coin["estimated_spread_bps"],
