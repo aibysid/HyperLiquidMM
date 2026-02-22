@@ -676,6 +676,25 @@ def build_configs(ranked_coins, live_spreads, project_root="."):
 # 6. REDIS PUBLISHING
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def read_ranker_priority_from_redis(redis_url):
+    """
+    Read priority coins published by the auto-ranker cron (mm:priority_coins key).
+    Returns a set of coin names, or empty set if unavailable.
+    """
+    try:
+        import redis as redis_lib
+        r = redis_lib.Redis.from_url(redis_url, decode_responses=True)
+        raw = r.get("mm:priority_coins")
+        if raw:
+            data = json.loads(raw)
+            coins = set(data.get("coins", []))
+            updated = data.get("updated_at", "unknown")
+            log.info(f"Ranker priority from Redis: {coins} (updated: {updated})")
+            return coins
+    except Exception as e:
+        log.debug(f"Could not read ranker priority from Redis: {e}")
+    return set()
+
 def publish_to_redis(redis_url, configs):
     """
     Publish Vec<MmAssetConfig> as JSON to the mm:asset_config Redis channel.
@@ -761,17 +780,22 @@ def run_screening_cycle(args, project_root="."):
             )
 
     # ── Dynamic priority discovery from tick data ─────────────────────────
-    # Auto-detect high-throughput coins. Falls back to seed list if no data.
+    # Two sources merged: tick-based activity detection + ranker backtest results
     dynamic_priority = discover_priority_coins(tick_data_dir)
-    if not dynamic_priority:
-        dynamic_priority = FALLBACK_PRIORITY_COINS
-        log.info(f"No tick data for dynamic priority — using fallback: {FALLBACK_PRIORITY_COINS}")
+    ranker_priority = read_ranker_priority_from_redis(args.redis_url)
+    combined_priority = dynamic_priority | ranker_priority  # Union of both
+
+    if not combined_priority:
+        combined_priority = FALLBACK_PRIORITY_COINS
+        log.info(f"No priority sources available — using fallback: {FALLBACK_PRIORITY_COINS}")
+    elif ranker_priority:
+        log.info(f"Combined priority: tick={dynamic_priority}, ranker={ranker_priority}")
 
     for coin in coins:
         coin["fill_activity"] = activity_bonuses.get(coin["name"], 1.0)
 
-        # Dynamic priority bonus — auto-detected each cycle from tick data
-        priority = PRIORITY_BONUS if coin["name"] in dynamic_priority else 1.0
+        # Dynamic priority bonus — merged from tick data + ranker backtest
+        priority = PRIORITY_BONUS if coin["name"] in combined_priority else 1.0
 
         coin["maker_edge"] = compute_maker_edge(
             spread_bps=coin["estimated_spread_bps"],

@@ -91,6 +91,30 @@ services:
       # Screener logs
       - ./logs/mm:/app/logs
 
+  # ── Auto-Ranker Cron (backtests all coins every 6h → updates priority list) ──
+  # Runs the offline backtester on accumulated tick data and auto-updates
+  # the screener's PRIORITY_COINS whitelist based on real performance.
+  mm-ranker:
+    build:
+      context: .
+      dockerfile: scripts/Dockerfile.mm_screener    # Same image as screener
+    container_name: mm_ranker
+    depends_on:
+      mm-redis:
+        condition: service_healthy
+      mm-engine:
+        condition: service_started
+    environment:
+      - RANK_INTERVAL_HOURS=6
+      - REDIS_URL=redis://mm-redis:6379
+    entrypoint: ["bash", "scripts/cron_ranker.sh"]
+    restart: unless-stopped
+    volumes:
+      # Shared tick data for backtesting (read-only)
+      - mm_tick_data:/app/data/ticks:ro
+      # Ranker logs
+      - ./logs/mm:/app/logs
+
 # ── Named volumes ──────────────────────────────────────────────────────────
 # Named volume ensures tick data persists across container rebuilds
 # and is shared between engine (writer) and screener (reader).

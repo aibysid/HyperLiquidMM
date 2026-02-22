@@ -24,6 +24,7 @@ Usage:
 import os
 import sys
 import re
+import json
 import argparse
 import logging
 from datetime import datetime, timezone
@@ -224,6 +225,37 @@ def update_screener_whitelist(ranked, screener_path, top_n=5):
     return True
 
 
+def publish_priority_to_redis(ranked, redis_url, top_n=5):
+    """
+    Publish qualified priority coins to Redis key mm:priority_coins.
+    The screener reads this key each cycle to boost proven performers.
+    """
+    qualified = [r["coin"] for r in ranked
+                 if r["composite_score"] >= 60 and r["fill_balance"] >= 0.8][:top_n]
+
+    if not qualified:
+        log.warning("No coins qualified for priority. Not updating Redis.")
+        return False
+
+    try:
+        import redis as redis_lib
+        r = redis_lib.Redis.from_url(redis_url, decode_responses=True)
+        r.ping()
+
+        payload = json.dumps({
+            "coins": qualified,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "scores": {c["coin"]: c["composite_score"] for c in ranked
+                       if c["coin"] in qualified},
+        })
+        r.set("mm:priority_coins", payload)
+        log.info(f"Published priority coins to Redis: {qualified}")
+        return True
+    except Exception as e:
+        log.error(f"Redis publish failed: {e}")
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Rank coins by backtester performance and update whitelist"
@@ -238,6 +270,9 @@ def main():
                         help=f"Max inventory USD (default: {DEFAULT_MAX_INV})")
     parser.add_argument("--update-screener", action="store_true",
                         help="Auto-update PRIORITY_COINS in mm_asset_screener.py")
+    parser.add_argument("--redis-url", type=str,
+                        default=os.environ.get("REDIS_URL", "redis://127.0.0.1:6380"),
+                        help="Redis URL to publish priority coins")
     parser.add_argument("--project-root", type=str, default=".",
                         help="Project root directory")
     args = parser.parse_args()
@@ -267,6 +302,9 @@ def main():
             update_screener_whitelist(ranked, screener_path)
         else:
             log.error(f"Screener not found at {screener_path}")
+
+    # Always publish to Redis when available
+    publish_priority_to_redis(ranked, args.redis_url)
 
 
 if __name__ == "__main__":
