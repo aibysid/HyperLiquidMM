@@ -25,7 +25,7 @@ mod market_maker;
 
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tokio::sync::Mutex as AsyncMutex;
 
 use ingestor::{MarketDataBuffer, new_stall_panic_flag, LatencyAuditor};
@@ -215,6 +215,29 @@ async fn main() {
             (buf.l2_books.clone(), buf.trade_buffers.clone())
         };
 
+        // ── Phase 9L: Global State Reconciliation & Flush (every 30s) ──────────────
+        if !shadow_mode {
+            static LAST_RECONCILE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+            let now_ms = chrono::Utc::now().timestamp_millis() as u64;
+            let last_rec = LAST_RECONCILE.load(Ordering::Relaxed);
+            if now_ms - last_rec > 30_000 {
+                LAST_RECONCILE.store(now_ms, Ordering::Relaxed);
+                log::info!("[MAIN] Triggering 30s global reconciliation and flush check...");
+                let mut eng = exec_engine.lock().await;
+                match eng.exchange.get_positions().await {
+                    Ok(positions) => {
+                        log::info!("[MAIN] Fetched {} positions from exchange.", positions.len());
+                        let _ = eng.inventory.reconcile(&positions);
+                        // Flush Orphaned Positions (Phase 9M)
+                        let active_assets: HashSet<String> = asset_configs.keys().cloned().collect();
+                        log::info!("[MAIN] Active screener assets: {:?}", active_assets);
+                        eng.flush_orphaned_positions(&active_assets).await;
+                    }
+                    Err(e) => log::warn!("[INVENTORY] Position fetch failed: {}", e),
+                }
+            }
+        }
+
         // ── Per-asset loop ─────────────────────────────────────────────────────
         for (coin, snap) in &l2_snap {
             let config = match asset_configs.get(coin) {
@@ -325,27 +348,6 @@ async fn main() {
 
                 let mut eng = exec_engine.lock().await;
 
-                // Step 0: Reconcile inventory from exchange positions (every 30s)
-                static LAST_RECONCILE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-                let last_rec = LAST_RECONCILE.load(Ordering::Relaxed);
-                if now_ms - last_rec > 30_000 {
-                    LAST_RECONCILE.store(now_ms, Ordering::Relaxed);
-                    match eng.exchange.get_positions().await {
-                        Ok(positions) => {
-                            let diffs = eng.inventory.reconcile(&positions);
-                            for (c, internal, live, delta) in &diffs {
-                                if delta.abs() > 0.001 {
-                                    log::info!(
-                                        "[INVENTORY] {} internal={:.4} live={:.4} delta={:.4}",
-                                        c, internal, live, delta
-                                    );
-                                }
-                            }
-                        }
-                        Err(e) => log::warn!("[INVENTORY] Position fetch failed: {}", e),
-                    }
-                }
-
                 // Step 1: Check inventory — skip this coin if at max
                 let inv_coins = eng.inventory.positions.get(coin).cloned().unwrap_or(0.0);
                 let inv_usd_abs = (inv_coins * mid).abs();
@@ -360,6 +362,15 @@ async fn main() {
 
                 // Step 2: Cancel ONLY this coin's orders (not all coins!)
                 let _ = eng.exchange.cancel_coin_orders(coin).await;
+
+                // Step 2.5: Atomic Margin Check (Phase 9L)
+                let total_grid_notional: f64 = grid.bids.iter().map(|b| b.size_usd).sum::<f64>() 
+                                             + grid.asks.iter().map(|a| a.size_usd).sum::<f64>();
+                
+                if !eng.has_sufficient_margin(total_grid_notional).await {
+                    log::warn!("[MARGIN GUARD] Skipping {} grid due to insufficient account equity.", coin);
+                    continue;
+                }
 
                 // Step 3: Place grid quotes (bids + asks)
                 let all_quotes: Vec<_> = grid.bids.iter().chain(grid.asks.iter()).collect();

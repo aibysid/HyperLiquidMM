@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
+use crate::signing::sign_l1_action;
 
 // ─── Shared Models ─────────────────────────────────────────────────
 
@@ -101,6 +101,7 @@ impl std::fmt::Display for OrderError {
 pub trait ExchangeClient: Send + Sync {
     async fn get_balance(&self) -> Result<f64, OrderError>;
     async fn get_positions(&self) -> Result<Vec<Position>, OrderError>;
+    async fn get_all_mids(&self) -> Result<HashMap<String, f64>, OrderError>;
     async fn get_open_orders(&self, coin: &str) -> Result<Vec<serde_json::Value>, OrderError>;
     async fn open_order(&mut self, coin: &str, direction: &str, size: f64, price: f64, leverage: f64, tp: f64, sl: f64, post_only: bool) -> Result<TradeAction, OrderError>;
     async fn close_position(&mut self, coin: &str, price: f64, reason: &str, ts: u64) -> Result<TradeAction, OrderError>;
@@ -165,11 +166,15 @@ impl ExchangeClient for SimExchange {
         Ok(self.positions.values().cloned().collect())
     }
 
+    async fn get_all_mids(&self) -> Result<HashMap<String, f64>, OrderError> {
+        Ok(HashMap::new()) // Sim doesn't use REST mids, or has no concept of them
+    }
+
     async fn get_open_orders(&self, _coin: &str) -> Result<Vec<serde_json::Value>, OrderError> {
         Ok(Vec::new()) // Sim doesn't really have resting orders, they execute immediately
     }
 
-    async fn open_order(&mut self, coin: &str, direction: &str, size: f64, price: f64, leverage: f64, tp: f64, sl: f64, post_only: bool) -> Result<TradeAction, OrderError> {
+    async fn open_order(&mut self, coin: &str, direction: &str, size: f64, price: f64, leverage: f64, _tp: f64, _sl: f64, post_only: bool) -> Result<TradeAction, OrderError> {
         if self.positions.contains_key(coin) {
              return Err(OrderError::InvalidOrder(format!("Already have position in {}", coin)));
         }
@@ -193,8 +198,8 @@ impl ExchangeClient for SimExchange {
             entry_price: price,
             margin_used: margin,
             leverage,
-            tp_price: tp,
-            sl_price: sl, 
+            tp_price: _tp,
+            sl_price: _sl, 
             liquidation_price: 0.0, // TODO: Calc Liq
             entry_time: chrono::Utc::now().timestamp_millis() as u64,
             unrealized_pnl: 0.0,
@@ -387,11 +392,8 @@ impl ExchangeClient for LiveExchange {
 
         log::info!("BALANCE DEBUG: Withdrawable: ${:.2}, Account Value: ${:.2}", withdrawable, account_value);
         
-        // Return account_value so the bot sees the total equity including active margin.
-        // This resolves the issue where 'withdrawable' drops to near zero when a position is open.
-        let balance = account_value;
-        
-        Ok(balance)
+        // Return withdrawable so the margin guard in execution.rs is conservative.
+        Ok(withdrawable)
     }
 
     async fn get_positions(&self) -> Result<Vec<Position>, OrderError> {
@@ -407,7 +409,7 @@ impl ExchangeClient for LiveExchange {
             for p in pos_list {
                 let pos_data = &p["position"];
                 let coin = pos_data["coin"].as_str().unwrap_or("").to_string();
-                let sz = pos_data["s"].as_str().and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0);
+                let sz = pos_data["szi"].as_str().and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0);
                 if sz.abs() < 1e-8 { continue; }
 
                 let entry_price = pos_data["entryPx"].as_str().and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0);
@@ -432,6 +434,24 @@ impl ExchangeClient for LiveExchange {
 
     }
 
+    /// Fetches the latest mid prices for all coins in the Hyperliquid universe.
+    async fn get_all_mids(&self) -> Result<HashMap<String, f64>, OrderError> {
+        let payload = serde_json::json!({ "type": "allMids" });
+        let data = self.post_info(payload).await?;
+        
+        let mut mids = HashMap::new();
+        if let Some(obj) = data.as_object() {
+            for (coin, px_val) in obj {
+                if let Some(px_str) = px_val.as_str() {
+                    if let Ok(px) = px_str.parse::<f64>() {
+                        mids.insert(coin.clone(), px);
+                    }
+                }
+            }
+        }
+        Ok(mids)
+    }
+
     async fn get_open_orders(&self, coin: &str) -> Result<Vec<serde_json::Value>, OrderError> {
         let payload = serde_json::json!({
             "type": "openOrders",
@@ -451,7 +471,7 @@ impl ExchangeClient for LiveExchange {
         Ok(orders)
     }
 
-    async fn open_order(&mut self, coin: &str, direction: &str, size: f64, price: f64, leverage: f64, tp: f64, sl: f64, post_only: bool) -> Result<TradeAction, OrderError> {
+    async fn open_order(&mut self, coin: &str, direction: &str, size: f64, price: f64, leverage: f64, _tp: f64, _sl: f64, post_only: bool) -> Result<TradeAction, OrderError> {
         let is_buy = direction == "LONG";
         
         // Note: Idempotency is handled by the caller (main loop does cancel-then-replace).
@@ -471,11 +491,16 @@ impl ExchangeClient for LiveExchange {
             price
         };
 
-        let price_rounded = round_to_5_sig_figs(execution_price);
+        // For Post-Only (Maker) orders, we trust the price computed by the grid engine (already snapped to tick).
+        // For Taker orders, we use the aggressive execution_price.
+        let price_rounded = if post_only {
+            price // use raw price from grid engine
+        } else {
+            round_to_5_sig_figs(execution_price)
+        };
         
         let nonce = chrono::Utc::now().timestamp_millis() as u64;
         
-        let asset_idx = *self.coin_to_asset.get(coin).ok_or_else(|| OrderError::InvalidOrder(format!("Unknown coin: {}", coin)))?;
         let sz_decimals = self.asset_info.get(&asset_idx).map(|info| info.sz_decimals).unwrap_or(4);
         
         // Re-round size using precise decimals from API if available
@@ -487,8 +512,8 @@ impl ExchangeClient for LiveExchange {
 
         // Clamp Leverage to Asset Limit
         let max_lev = self.asset_info.get(&asset_idx).map(|info| info.max_leverage as f64).unwrap_or(20.0);
-        let final_leverage = if leverage > max_lev {
-            log::warn!("LEVERAGE: Requested {:.1}x for {} but max is {:.1}x. Clamping.", leverage, coin, max_lev);
+        let _final_leverage = if leverage > max_lev {
+            log::warn!("[LEVERAGE] {} capping {}x down to {}x (max)", coin, leverage, max_lev);
             max_lev
         } else {
             leverage
@@ -521,7 +546,7 @@ impl ExchangeClient for LiveExchange {
              grouping: "na".to_string(),
         };
 
-        let (sig, action_json) = crate::signing::sign_l1_action(&self.private_key, action_wire, nonce).await
+        let (sig, action_json) = sign_l1_action(&self.private_key, action_wire, nonce).await
              .map_err(|e| OrderError::InvalidOrder(e.to_string()))?;
         
         let result = self.post_exchange(action_json, nonce, sig).await?;
@@ -558,7 +583,7 @@ impl ExchangeClient for LiveExchange {
         })
     }
 
-    async fn close_position(&mut self, coin: &str, price: f64, reason: &str, ts: u64) -> Result<TradeAction, OrderError> {
+    async fn close_position(&mut self, coin: &str, price: f64, reason: &str, _ts: u64) -> Result<TradeAction, OrderError> {
         let positions = self.get_positions().await?;
         let pos = positions.iter().find(|p| p.coin == coin)
             .ok_or_else(|| OrderError::InvalidOrder(format!("No live position to close for {}", coin)))?;
@@ -574,7 +599,7 @@ impl ExchangeClient for LiveExchange {
         let nonce = chrono::Utc::now().timestamp_millis() as u64;
 
         let asset_idx = *self.coin_to_asset.get(coin).ok_or_else(|| OrderError::InvalidOrder(format!("Unknown coin: {}", coin)))?;
-        let sz_decimals = self.asset_info.get(&asset_idx).map(|info| info.sz_decimals).unwrap_or(4); // Default 4 if missing
+        let _sz_decimals = self.asset_info.get(&asset_idx).map(|info| info.sz_decimals).unwrap_or(4); // Default 4 if missing
         
         // Format strings using float_to_wire (matches Python SDK)
         let limit_px_str = float_to_wire(price_rounded);
@@ -757,7 +782,7 @@ pub fn round_to_5_sig_figs(val: f64) -> f64 {
         return 0.0;
     }
     let d = 5 - 1 - (val.abs().log10().floor() as i32);
-    let d = d.clamp(0, 8);
+    let d = d.clamp(0, 10);
     let factor = 10_f64.powi(d);
     (val * factor).round() / factor
 }
@@ -776,7 +801,7 @@ pub fn round_f64(val: f64, decimals: usize) -> f64 {
 /// ```
 /// Round to 8 decimals, then strip trailing zeros (but keep at least one digit after decimal point is NOT required — SDK allows "100" with no decimal).
 pub fn float_to_wire(x: f64) -> String {
-    // Step 1: Round to 8 decimal places
+    // Step 1: Round to 8 decimal places (as per HL SDK)
     let rounded = format!("{:.8}", x);
     
     // Step 2: Normalize (strip trailing zeros after decimal point)

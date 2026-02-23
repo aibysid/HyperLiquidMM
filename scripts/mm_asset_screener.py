@@ -41,12 +41,12 @@ CHANNEL_ENGINE_STATUS = "mm:engine_status"
 
 # Default screening parameters
 DEFAULT_MIN_VOLUME_USD = 1_000_000      # $1M daily volume minimum (mid-tier sweet spot)
-DEFAULT_MAX_COINS = 3                    # Max coins (limited by $50 account)
+DEFAULT_MAX_COINS = 2                    # Max coins (increased from 1 for more activity)
 DEFAULT_CORRELATION_THRESHOLD = 0.85     # Price correlation cutoff
 DEFAULT_MAX_PER_CLUSTER = 1              # Max coins from one correlated group (tight for small acct)
-DEFAULT_MIN_SPREAD_BPS = 4.5             # Maker fees are 1.44 bps each way (2.88 round-trip). Minimum spread must clear this.
-DEFAULT_MAX_INV_USD = 20.0               # Max inventory per coin ($50 total / 3 coins ≈ $16, with buffer)
-DEFAULT_MIN_ORDER_USD = 10.0             # Minimum order size (Hyperliquid floor ~$10)
+DEFAULT_MIN_SPREAD_BPS = 5.0             # Maker fees are 1.44 bps each way (2.88 round-trip). Minimum spread must clear this.
+DEFAULT_MAX_INV_USD = 20.0               # Max inventory per coin ($31 balance, one coin)
+DEFAULT_MIN_ORDER_USD = 10.5             # Minimum order size (Hyperliquid floor ~$10)
 
 # Priority coins: dynamically discovered from tick data each cycle.
 # Coins with high book-activity get a score bonus. No manual curation needed.
@@ -601,7 +601,7 @@ def _read_spreads_from_parquet(parquet_path):
     except Exception:
         return []
 
-def compute_trend_from_ticks(coin_name, project_root=".", min_change_pct=0.003, max_ticks=5000):
+def compute_trend_from_ticks(coin_name, project_root=".", min_change_pct=0.002, max_ticks=5000):
     """
     Determines if the coin is currently trending aggressively based on recent ticks.
     - min_change_pct = 0.003 -> 0.3% move in the last ~5-15 mins
@@ -678,9 +678,9 @@ def build_configs(ranked_coins, live_spreads, project_root="."):
             base_spread_bps = calibrated_spread
             spread_source = "tick_data"
         elif name in live_spreads:
-            # Use live L2 spread × 0.8 (quote inside the market)
+            # Use live L2 spread × 1.1 (quote slightly outside the market to ensure ALO fill)
             base_spread_bps = max(DEFAULT_MIN_SPREAD_BPS,
-                                  round(live_spreads[name] * 0.8, 2))
+                                  round(live_spreads[name] * 1.1, 2))
             spread_source = "live_l2"
         else:
             # Fallback to estimated

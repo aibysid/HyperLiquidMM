@@ -8,8 +8,7 @@
 //   - check_ofi_halt()     : Order Flow Imbalance spike detection
 //   - cancel_fill_ratio    : Sliding-window API ban prevention guard
 // ─────────────────────────────────────────────────────────────────────────────
-use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex};
+use std::collections::{HashMap, VecDeque, HashSet};
 use serde::{Deserialize, Serialize};
 use crate::risk::{RiskManager, RiskConfig};
 use crate::exchange::{ExchangeClient, Position};
@@ -346,5 +345,90 @@ impl MmExecutionEngine {
 
     pub async fn get_positions(&self) -> Vec<Position> {
         self.exchange.get_positions().await.unwrap_or_default()
+    }
+
+    /// PHASE 9L: Pre-Flight Margin Check
+    /// Returns true if the account equity can safely cover the requested notional at 10x leverage.
+    pub async fn has_sufficient_margin(&self, total_notional_usd: f64) -> bool {
+        if self.config.shadow_mode { return true; }
+
+        match self.exchange.get_balance().await {
+            Ok(balance) => {
+                // Rule of Thumb: We want current account value to be at least 10% of total
+                // intended exposure (10x gross leverage cap for this specific grid).
+                let min_required = total_notional_usd / 10.0;
+                
+                if balance < min_required {
+                    log::warn!(
+                        "[MARGIN GUARD] Grid placement blocked. Required Notional: ${:.2}. 10x Margin Required: ${:.2}. Available Equity: ${:.2}",
+                        total_notional_usd, min_required, balance
+                    );
+                    return false;
+                }
+                true
+            }
+            Err(e) => {
+                log::error!("[MARGIN GUARD] Could not fetch balance: {:?}. Skipping for safety.", e);
+                false
+            }
+        }
+    }
+
+    /// PHASE 9M: Orphaned Position Flusher
+    /// Detects positions for coins that are NO LONGER in the active screener whitelist
+    /// and closes them using a Taker (Market) order to immediately free up margin.
+    pub async fn flush_orphaned_positions(&mut self, active_coins: &HashSet<String>) {
+        if self.config.shadow_mode { return; }
+        log::info!("[FLUSH] Checking for orphaned positions...");
+
+        let live_positions = match self.exchange.get_positions().await {
+            Ok(pos) => pos,
+            Err(e) => {
+                log::error!("[FLUSH] Failed to fetch live positions: {:?}", e);
+                return;
+            }
+        };
+
+        if live_positions.is_empty() {
+            log::info!("[FLUSH] No open positions to check.");
+            return;
+        }
+
+        // Fetch all market mids so we can place competitive Maker orders
+        let mids = match self.exchange.get_all_mids().await {
+            Ok(m) => m,
+            Err(e) => {
+                log::error!("[FLUSH] Failed to fetch all mids: {:?}", e);
+                return;
+            }
+        };
+
+        log::info!("[FLUSH] Analyzing {} live positions against active whitelist.", live_positions.len());
+        for pos in live_positions {
+            if !active_coins.contains(&pos.coin) && pos.size.abs() > 1e-8 {
+                let current_px = mids.get(&pos.coin).cloned().unwrap_or(pos.entry_price);
+                
+                log::warn!(
+                    "[FLUSH] Orphaned position detected: {} ({:.4} coins). Closing via Maker order @ ${:.6}...",
+                    pos.coin, pos.size, current_px
+                );
+
+                // Step 1: Clear any existing stale orders for this orphaned coin
+                let _ = self.exchange.cancel_coin_orders(&pos.coin).await;
+
+                // Step 2: Place a Post-Only (Maker) order at the mid price
+                let direction = if pos.direction == "LONG" { "SHORT" } else { "LONG" };
+                match self.exchange.open_order(
+                    &pos.coin,
+                    direction,
+                    pos.size,
+                    current_px, 
+                    1.0, 0.0, 0.0, true // POST_ONLY = true
+                ).await {
+                    Ok(_) => log::info!("[FLUSH] Successfully placed maker-close for {}.", pos.coin),
+                    Err(e) => log::error!("[FLUSH] Failed to place maker-close for {}: {:?}", pos.coin, e),
+                }
+            }
+        }
     }
 }

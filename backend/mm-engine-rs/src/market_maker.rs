@@ -139,29 +139,33 @@ pub fn compute_quote_grid(
 
     let mut grid = QuoteGrid::default();
 
-    // ─── Phase 9K: Trend Awareness ──────────────────────────────────────────
-    // Do not enter a position against the macro trend.
-    // If we have inventory, we STILL quote to exit (soft exit), but we do
-    // not open a NEW position against the trend.
-    let mut allow_bids = !suppress_bids;
-    let mut allow_asks = !suppress_asks;
+    // ─── Phase 9K: Trend Awareness (Asymmetric Skewing) ─────────────────────
+    // Instead of shutting off the grid, we push the "dangerous" side incredibly deep
+    // (e.g., 3x the normal spread) so we only enter if the trend wick flashes massively.
+    let allow_bids = !suppress_bids;
+    let allow_asks = !suppress_asks;
+    
+    let mut bid_trend_skew = 0.0;
+    let mut ask_trend_skew = 0.0;
 
     if config.trend == "up" {
         if inv_usd <= 0.0 {
-            allow_asks = false; // Don't short an uptrend
+            // Trend is UP, we don't want to short cheaply. Push the Ask extremely high and demand premium.
+            ask_trend_skew = effective_spread * 3.0; // Captures an extra 300% spread if filled
         }
     } else if config.trend == "down" {
         if inv_usd >= 0.0 {
-            allow_bids = false; // Don't long a downtrend
+            // Trend is DOWN, we don't want to buy cheaply. Push the Bid extremely low and demand discount.
+            bid_trend_skew = effective_spread * 3.0; // Captures an extra 300% spread if filled
         }
     }
 
     for (i, (&sp, &sz)) in spreads.iter().zip(sizes.iter()).enumerate().take(max_layers) {
         let layer = (i + 1) as u8;
 
-        // Bids: placed below mid, shifted down when long (Soft Exit)
+        // Bids: placed below mid, shifted down when long (Soft Exit), shifted down when downtrend
         if allow_bids {
-            let bid_price = snap_to_tick(mid_price - sp - skew_amount, config.tick_size);
+            let bid_price = round_to_5_sig_figs(snap_to_tick(mid_price - sp - skew_amount - bid_trend_skew, config.tick_size));
             if bid_price > 0.0 {
                 grid.bids.push(GridQuote {
                     side: "bid",
@@ -173,9 +177,9 @@ pub fn compute_quote_grid(
             }
         }
 
-        // Asks: placed above mid, shifted down when long (Soft Exit — sell cheaper)
+        // Asks: placed above mid, shifted down when long (Soft Exit), shifted up when uptrend
         if allow_asks {
-            let ask_price = snap_to_tick(mid_price + sp - skew_amount, config.tick_size);
+            let ask_price = round_to_5_sig_figs(snap_to_tick(mid_price + sp - skew_amount + ask_trend_skew, config.tick_size));
             if ask_price > mid_price * 0.9 {
                 // Sanity: ask must stay above 90% of mid (don't accidentally cross)
                 grid.asks.push(GridQuote {
@@ -448,4 +452,14 @@ impl ShadowSession {
             self.total_pnl_usd, self.total_volume_usd, self.total_rebates_usd, self.fills.len()
         )
     }
+}
+
+pub fn round_to_5_sig_figs(val: f64) -> f64 {
+    if val == 0.0 {
+        return 0.0;
+    }
+    let d = 5 - 1 - (val.abs().log10().floor() as i32);
+    let d = d.clamp(0, 10);
+    let factor = 10_f64.powi(d);
+    (val * factor).round() / factor
 }
