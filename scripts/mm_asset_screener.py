@@ -601,6 +601,57 @@ def _read_spreads_from_parquet(parquet_path):
     except Exception:
         return []
 
+def compute_trend_from_ticks(coin_name, project_root=".", min_change_pct=0.003, max_ticks=5000):
+    """
+    Determines if the coin is currently trending aggressively based on recent ticks.
+    - min_change_pct = 0.003 -> 0.3% move in the last ~5-15 mins
+    """
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    csv_path = os.path.join(project_root, TICK_CSV_DIR, coin_name, f"{today}.csv")
+
+    if not os.path.exists(csv_path):
+        return "ranging"
+
+    try:
+        with open(csv_path, 'r') as f:
+            lines = f.readlines()
+        
+        recent = lines[-max_ticks:]
+        if len(recent) < 100:
+            return "ranging"
+            
+        first_mid = None
+        for line in recent:
+            parts = line.strip().split(',')
+            if len(parts) >= 6:
+                try:
+                    first_mid = float(parts[4])
+                    break
+                except ValueError:
+                    continue
+                    
+        last_mid = None
+        for line in reversed(recent):
+            parts = line.strip().split(',')
+            if len(parts) >= 6:
+                try:
+                    last_mid = float(parts[4])
+                    break
+                except ValueError:
+                    continue
+                    
+        if first_mid and last_mid and first_mid > 0:
+            change_pct = (last_mid - first_mid) / first_mid
+            if change_pct > min_change_pct:
+                return "up"
+            elif change_pct < -min_change_pct:
+                return "down"
+                
+    except Exception as e:
+        log.debug(f"Trend compute failed for {coin_name}: {e}")
+        
+    return "ranging"
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 5. CONFIG BUILDING
@@ -655,6 +706,9 @@ def build_configs(ranked_coins, live_spreads, project_root="."):
         # Rough proxy from spread: higher spread → higher volatility
         atr_fraction = round(base_spread_bps / 10_000 * 1.5, 6)
 
+        # ── trend awareness ───────────────────────────────────────────────
+        trend = compute_trend_from_ticks(name, project_root)
+
         config = {
             "asset": name,
             "tick_size": coin["tick_size"],
@@ -663,11 +717,12 @@ def build_configs(ranked_coins, live_spreads, project_root="."):
             "base_spread_bps": base_spread_bps,
             "atr_fraction": atr_fraction,
             "regime": regime,
+            "trend": trend,
         }
         configs.append(config)
 
         log.debug(f"  {name:>8s}: spread={base_spread_bps:.1f}bps ({spread_source}) "
-                  f"regime={regime} max_inv=${max_inv:.0f}")
+                  f"regime={regime} trend={trend} max_inv=${max_inv:.0f}")
 
     return configs
 

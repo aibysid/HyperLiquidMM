@@ -30,6 +30,13 @@ pub struct MmAssetConfig {
     pub atr_fraction: f64,
     /// Regime: "calm", "uncertain", or "halt"
     pub regime: String,
+    /// Trend: "up", "down", or "ranging"
+    #[serde(default = "default_trend")]
+    pub trend: String,
+}
+
+fn default_trend() -> String {
+    "ranging".to_string()
 }
 
 impl Default for MmAssetConfig {
@@ -42,6 +49,7 @@ impl Default for MmAssetConfig {
             base_spread_bps: 1.5,
             atr_fraction: 0.002,
             regime: "calm".to_string(),
+            trend: "ranging".to_string(),
         }
     }
 }
@@ -131,11 +139,28 @@ pub fn compute_quote_grid(
 
     let mut grid = QuoteGrid::default();
 
+    // ─── Phase 9K: Trend Awareness ──────────────────────────────────────────
+    // Do not enter a position against the macro trend.
+    // If we have inventory, we STILL quote to exit (soft exit), but we do
+    // not open a NEW position against the trend.
+    let mut allow_bids = !suppress_bids;
+    let mut allow_asks = !suppress_asks;
+
+    if config.trend == "up" {
+        if inv_usd <= 0.0 {
+            allow_asks = false; // Don't short an uptrend
+        }
+    } else if config.trend == "down" {
+        if inv_usd >= 0.0 {
+            allow_bids = false; // Don't long a downtrend
+        }
+    }
+
     for (i, (&sp, &sz)) in spreads.iter().zip(sizes.iter()).enumerate().take(max_layers) {
         let layer = (i + 1) as u8;
 
         // Bids: placed below mid, shifted down when long (Soft Exit)
-        if !suppress_bids {
+        if allow_bids {
             let bid_price = snap_to_tick(mid_price - sp - skew_amount, config.tick_size);
             if bid_price > 0.0 {
                 grid.bids.push(GridQuote {
@@ -149,7 +174,7 @@ pub fn compute_quote_grid(
         }
 
         // Asks: placed above mid, shifted down when long (Soft Exit — sell cheaper)
-        if !suppress_asks {
+        if allow_asks {
             let ask_price = snap_to_tick(mid_price + sp - skew_amount, config.tick_size);
             if ask_price > mid_price * 0.9 {
                 // Sanity: ask must stay above 90% of mid (don't accidentally cross)
