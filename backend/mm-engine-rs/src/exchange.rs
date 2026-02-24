@@ -82,6 +82,7 @@ pub enum OrderError {
     MaxPositionsReached,
     InvalidOrder(String),
     NetworkError(String),
+    RateLimited,
 }
 
 impl std::fmt::Display for OrderError {
@@ -91,6 +92,7 @@ impl std::fmt::Display for OrderError {
             OrderError::MaxPositionsReached => write!(f, "Max Positions Reached"),
             OrderError::InvalidOrder(s) => write!(f, "Invalid Order: {}", s),
             OrderError::NetworkError(s) => write!(f, "Network Error: {}", s),
+            OrderError::RateLimited => write!(f, "Rate Limited (429)"),
         }
     }
 }
@@ -99,10 +101,10 @@ impl std::fmt::Display for OrderError {
 
 #[async_trait]
 pub trait ExchangeClient: Send + Sync {
-    async fn get_balance(&self) -> Result<f64, OrderError>;
-    async fn get_positions(&self) -> Result<Vec<Position>, OrderError>;
-    async fn get_all_mids(&self) -> Result<HashMap<String, f64>, OrderError>;
-    async fn get_open_orders(&self, coin: &str) -> Result<Vec<serde_json::Value>, OrderError>;
+    async fn get_balance(&mut self) -> Result<f64, OrderError>;
+    async fn get_positions(&mut self) -> Result<Vec<Position>, OrderError>;
+    async fn get_all_mids(&mut self) -> Result<HashMap<String, f64>, OrderError>;
+    async fn get_open_orders(&mut self, coin: &str) -> Result<Vec<serde_json::Value>, OrderError>;
     async fn open_order(&mut self, coin: &str, direction: &str, size: f64, price: f64, leverage: f64, tp: f64, sl: f64, post_only: bool) -> Result<TradeAction, OrderError>;
     async fn close_position(&mut self, coin: &str, price: f64, reason: &str, ts: u64) -> Result<TradeAction, OrderError>;
     async fn withdraw(&mut self, amount: f64) -> Result<f64, OrderError>;
@@ -158,19 +160,19 @@ impl SimExchange {
 
 #[async_trait]
 impl ExchangeClient for SimExchange {
-    async fn get_balance(&self) -> Result<f64, OrderError> {
+    async fn get_balance(&mut self) -> Result<f64, OrderError> {
         Ok(self.balance)
     }
 
-    async fn get_positions(&self) -> Result<Vec<Position>, OrderError> {
+    async fn get_positions(&mut self) -> Result<Vec<Position>, OrderError> {
         Ok(self.positions.values().cloned().collect())
     }
 
-    async fn get_all_mids(&self) -> Result<HashMap<String, f64>, OrderError> {
+    async fn get_all_mids(&mut self) -> Result<HashMap<String, f64>, OrderError> {
         Ok(HashMap::new()) // Sim doesn't use REST mids, or has no concept of them
     }
 
-    async fn get_open_orders(&self, _coin: &str) -> Result<Vec<serde_json::Value>, OrderError> {
+    async fn get_open_orders(&mut self, _coin: &str) -> Result<Vec<serde_json::Value>, OrderError> {
         Ok(Vec::new()) // Sim doesn't really have resting orders, they execute immediately
     }
 
@@ -301,6 +303,11 @@ pub struct LiveExchange {
     pub client: reqwest::Client,
     pub coin_to_asset: HashMap<String, u32>,
     pub asset_info: HashMap<u32, AssetInfo>,
+    // PHASE 9P: Cache account state to avoid hitting global 20req/s limit
+    pub cached_balance: Option<(f64, std::time::Instant)>,
+    pub cached_positions: Option<(Vec<Position>, std::time::Instant)>,
+    pub cached_mids: Option<(HashMap<String, f64>, std::time::Instant)>,
+    pub cached_open_orders: Option<(Vec<serde_json::Value>, std::time::Instant)>,
 }
 
 impl LiveExchange {
@@ -312,6 +319,10 @@ impl LiveExchange {
             client: reqwest::Client::new(),
             coin_to_asset: HashMap::new(),
             asset_info: HashMap::new(),
+            cached_balance: None,
+            cached_positions: None,
+            cached_mids: None,
+            cached_open_orders: None,
         }
     }
 
@@ -343,7 +354,20 @@ impl LiveExchange {
             .await
             .map_err(|e| OrderError::NetworkError(e.to_string()))?;
         
-        resp.json().await.map_err(|e| OrderError::NetworkError(e.to_string()))
+        if resp.status().as_u16() == 429 {
+            return Err(OrderError::RateLimited);
+        }
+
+        let data: serde_json::Value = resp.json().await.map_err(|e| OrderError::NetworkError(e.to_string()))?;
+        
+        // Handle {"error": "rate limited"} payload which some HL endpoints return with 200
+        if let Some(err) = data["error"].as_str() {
+            if err.contains("rate limited") {
+                return Err(OrderError::RateLimited);
+            }
+        }
+
+        Ok(data)
     }
 
     async fn post_exchange(&self, action: serde_json::Value, nonce: u64, signature: crate::signing::Signature) -> Result<serde_json::Value, OrderError> {
@@ -362,17 +386,47 @@ impl LiveExchange {
             .await
             .map_err(|e| OrderError::NetworkError(e.to_string()))?;
         
+        if resp.status().as_u16() == 429 {
+            return Err(OrderError::RateLimited);
+        }
+
         let status = resp.status();
         let text = resp.text().await.map_err(|e| OrderError::NetworkError(e.to_string()))?;
         log::info!("EXCHANGE RESPONSE ({}): {}", status, text);
 
-        serde_json::from_str(&text).map_err(|e| OrderError::NetworkError(e.to_string()))
+        let data: serde_json::Value = serde_json::from_str(&text).map_err(|e| OrderError::NetworkError(e.to_string()))?;
+        
+        if let Some(err) = data["status"].as_str() {
+            if err == "err" && data["response"]["data"]["error"].as_str().unwrap_or_default().contains("rate limited") {
+                 return Err(OrderError::RateLimited);
+            }
+        }
+
+        Ok(data)
     }
 }
 
+const CACHE_DURATION: std::time::Duration = std::time::Duration::from_secs(2);
+
 #[async_trait]
 impl ExchangeClient for LiveExchange {
-    async fn get_balance(&self) -> Result<f64, OrderError> {
+    async fn get_balance(&mut self) -> Result<f64, OrderError> {
+        // use &self but LiveExchange is behind Mutex in ExecutionEngine, or ExecutionEngine is behind Mutex
+        // Wait, the trait says &self for get_balance. We need interior mutability for cache or just return cache if we had &mut self.
+        // Actually, the trait defines it as &self. Let's use a 2s cache if possible.
+        // If we can't change the trait, we might need to skip caching here or use Atomic/Mutex.
+        // But wait, the USER is complaining about rate limit. Let's fix it in ExecutionEngine or just make get_balance &mut self in trait?
+        // Changing trait is breaking. Let's check how ExecutionEngine uses it.
+        // Actually, let's just implement it with &self for now and see if we can use a small sleep or retry.
+        // BETTER: I'll change the trait and IMPLEMENTATIONS to &mut self since MM usually needs to update state.
+        
+        if let Some((balance, timestamp)) = &self.cached_balance {
+            if timestamp.elapsed() < CACHE_DURATION {
+                log::debug!("Returning cached balance: ${:.2}", balance);
+                return Ok(*balance);
+            }
+        }
+
         let payload = serde_json::json!({
             "type": "clearinghouseState",
             "user": self.account_address
@@ -393,10 +447,18 @@ impl ExchangeClient for LiveExchange {
         log::info!("BALANCE DEBUG: Withdrawable: ${:.2}, Account Value: ${:.2}", withdrawable, account_value);
         
         // Return withdrawable so the margin guard in execution.rs is conservative.
+        self.cached_balance = Some((withdrawable, std::time::Instant::now()));
         Ok(withdrawable)
     }
 
-    async fn get_positions(&self) -> Result<Vec<Position>, OrderError> {
+    async fn get_positions(&mut self) -> Result<Vec<Position>, OrderError> {
+        if let Some((positions, timestamp)) = &self.cached_positions {
+            if timestamp.elapsed() < CACHE_DURATION {
+                log::debug!("Returning cached positions ({}).", positions.len());
+                return Ok(positions.clone());
+            }
+        }
+
         let payload = serde_json::json!({
             "type": "clearinghouseState",
             "user": self.account_address
@@ -430,12 +492,18 @@ impl ExchangeClient for LiveExchange {
                 });
             }
         }
+        self.cached_positions = Some((positions.clone(), std::time::Instant::now()));
         Ok(positions)
-
     }
 
     /// Fetches the latest mid prices for all coins in the Hyperliquid universe.
-    async fn get_all_mids(&self) -> Result<HashMap<String, f64>, OrderError> {
+    async fn get_all_mids(&mut self) -> Result<HashMap<String, f64>, OrderError> {
+        if let Some((mids, timestamp)) = &self.cached_mids {
+            if timestamp.elapsed() < CACHE_DURATION {
+                return Ok(mids.clone());
+            }
+        }
+
         let payload = serde_json::json!({ "type": "allMids" });
         let data = self.post_info(payload).await?;
         
@@ -449,26 +517,44 @@ impl ExchangeClient for LiveExchange {
                 }
             }
         }
+        self.cached_mids = Some((mids.clone(), std::time::Instant::now()));
         Ok(mids)
     }
 
-    async fn get_open_orders(&self, coin: &str) -> Result<Vec<serde_json::Value>, OrderError> {
+    async fn get_open_orders(&mut self, coin: &str) -> Result<Vec<serde_json::Value>, OrderError> {
+        if let Some((orders, timestamp)) = &self.cached_open_orders {
+            if timestamp.elapsed() < CACHE_DURATION {
+                let mut filtered = Vec::new();
+                for order in orders {
+                    if coin.is_empty() || order["coin"].as_str() == Some(coin) {
+                        filtered.push(order.clone());
+                    }
+                }
+                return Ok(filtered);
+            }
+        }
+
         let payload = serde_json::json!({
             "type": "openOrders",
             "user": self.account_address
         });
 
         let data = self.post_info(payload).await?;
-        let mut orders = Vec::new();
+        let mut all_orders = Vec::new();
         
         if let Some(arr) = data.as_array() {
-            for order in arr {
-                if coin.is_empty() || order["coin"].as_str() == Some(coin) {
-                    orders.push(order.clone());
-                }
+            all_orders = arr.clone();
+        }
+        
+        self.cached_open_orders = Some((all_orders.clone(), std::time::Instant::now()));
+
+        let mut filtered = Vec::new();
+        for order in &all_orders {
+            if coin.is_empty() || order["coin"].as_str() == Some(coin) {
+                filtered.push(order.clone());
             }
         }
-        Ok(orders)
+        Ok(filtered)
     }
 
     async fn open_order(&mut self, coin: &str, direction: &str, size: f64, price: f64, leverage: f64, _tp: f64, _sl: f64, post_only: bool) -> Result<TradeAction, OrderError> {
@@ -491,13 +577,9 @@ impl ExchangeClient for LiveExchange {
             price
         };
 
-        // For Post-Only (Maker) orders, we trust the price computed by the grid engine (already snapped to tick).
-        // For Taker orders, we use the aggressive execution_price.
-        let price_rounded = if post_only {
-            price // use raw price from grid engine
-        } else {
-            round_to_5_sig_figs(execution_price)
-        };
+        // For Post-Only (Maker) orders, we want to ensure the price is formatted correctly.
+        // Even if the grid engine already rounded it, re-rounding ensures flusher orders (raw mids) are safe.
+        let price_rounded = round_to_5_sig_figs(execution_price);
         
         let nonce = chrono::Utc::now().timestamp_millis() as u64;
         

@@ -100,15 +100,15 @@ impl OfiCalculator {
     pub fn ofi_fraction(&self) -> f64 {
         if self.window.is_empty() { return 0.0; }
         
-        // Require at least 20 trades before making an OFI halt judgment
-        if self.window.len() < 20 { return 0.0; }
+        // Require at least 10 trades before making an OFI halt judgment
+        if self.window.len() < 10 { return 0.0; }
 
         let buy_vol: f64  = self.window.iter().filter(|(b, _)| *b).map(|(_, s)| s).sum();
         let sell_vol: f64 = self.window.iter().filter(|(b, _)| !b).map(|(_, s)| s).sum();
         let total = buy_vol + sell_vol;
         
-        // Require at least $5,000 in tracked timeframe volume to matter
-        if total <= 5_000.0 { return 0.0; }
+        // Require at least $500 in tracked timeframe volume to matter
+        if total <= 500.0 { return 0.0; }
         
         (buy_vol - sell_vol) / total
     }
@@ -181,7 +181,7 @@ pub struct MmExecutionEngine {
 impl MmExecutionEngine {
     pub async fn new(
         config: MmEngineConfig,
-        exchange: Box<dyn ExchangeClient>,
+        mut exchange: Box<dyn ExchangeClient>,
         session_id: String,
     ) -> Self {
         let balance = exchange.get_balance().await.unwrap_or(0.0);
@@ -302,7 +302,6 @@ impl MmExecutionEngine {
     }
 
     /// Returns true if the OFI is sufficiently one-sided to warrant cancelling bids.
-    /// Called in the main quoting loop before placing new bid quotes.
     pub fn ofi_bids_blocked(&self, coin: &str) -> bool {
         if let Some(tracker) = self.ofi_trackers.get(coin) {
             tracker.should_cancel_bids(self.config.ofi_halt_threshold)
@@ -339,17 +338,17 @@ impl MmExecutionEngine {
         self.halted
     }
 
-    pub async fn get_balance(&self) -> f64 {
+    pub async fn get_balance(&mut self) -> f64 {
         self.exchange.get_balance().await.unwrap_or(0.0)
     }
 
-    pub async fn get_positions(&self) -> Vec<Position> {
+    pub async fn get_positions(&mut self) -> Vec<Position> {
         self.exchange.get_positions().await.unwrap_or_default()
     }
 
     /// PHASE 9L: Pre-Flight Margin Check
     /// Returns true if the account equity can safely cover the requested notional at 10x leverage.
-    pub async fn has_sufficient_margin(&self, total_notional_usd: f64) -> bool {
+    pub async fn has_sufficient_margin(&mut self, total_notional_usd: f64) -> bool {
         if self.config.shadow_mode { return true; }
 
         match self.exchange.get_balance().await {
@@ -426,7 +425,22 @@ impl MmExecutionEngine {
                     1.0, 0.0, 0.0, true // POST_ONLY = true
                 ).await {
                     Ok(_) => log::info!("[FLUSH] Successfully placed maker-close for {}.", pos.coin),
-                    Err(e) => log::error!("[FLUSH] Failed to place maker-close for {}: {:?}", pos.coin, e),
+                    Err(e) => {
+                        log::warn!("[FLUSH] Maker-close failed for {}: {:?}. Retrying with aggressive Taker fallback.", pos.coin, e);
+                        
+                        // Fallback: Slightly more aggressive price to jump the queue and Post-Only = false
+                        let fallback_px = if direction == "SHORT" { current_px * 0.998 } else { current_px * 1.002 };
+                        match self.exchange.open_order(
+                            &pos.coin,
+                            direction,
+                            pos.size,
+                            fallback_px,
+                            1.0, 0.0, 0.0, false // POST_ONLY = false (Taker fallback)
+                        ).await {
+                            Ok(_) => log::info!("[FLUSH] Successfully placed URGENT taker-close for {}.", pos.coin),
+                            Err(e2) => log::error!("[FLUSH] CRITICAL: Failed both maker and taker close for {}: {:?}", pos.coin, e2),
+                        }
+                    }
                 }
             }
         }

@@ -114,11 +114,11 @@ pub fn compute_quote_grid(
     // Inventory skew: fraction of max inventory we currently hold.
     // Clamped to [-1, 1]. Skew shifts asks down / bids down when long.
     let inv_fraction = (inv_usd / config.max_inv_usd).clamp(-1.0, 1.0);
-    let mut skew_amount  = inv_fraction * effective_spread * 1.5;
+    let mut skew_amount  = inv_fraction * effective_spread * 1.2; // Relaxed from 1.5x to allow price reversion
 
     // CAP SKEW TO PREVENT FEE LOSSES ON SOFT EXITS
-    // Maker fees are 1.44 bps. Exits must be at least 1.5 bps away from mid to be profitable.
-    let min_distance_from_mid = mid_price * (1.5 / 10_000.0);
+    // Maker fees are 1.44 bps. Exits must be at least 5.0 bps away from mid to be profitable.
+    let min_distance_from_mid = mid_price * (5.0 / 10_000.0);
     let max_allowed_skew = (effective_spread - min_distance_from_mid).max(0.0);
     skew_amount = skew_amount.clamp(-max_allowed_skew, max_allowed_skew);
 
@@ -138,6 +138,18 @@ pub fn compute_quote_grid(
         .ok().and_then(|v| v.parse().ok()).unwrap_or(1);
 
     let mut grid = QuoteGrid::default();
+
+    // ─── Phase 7: Asymmetric Inventory Safety ───────────────────────────
+    // If inventory is > 50% of cap, we want to hold our ground on the unloading side
+    // but pull back aggressively on the loading side to avoid getting "run over".
+    let loading_multiplier = if inv_fraction.abs() > 0.5 { 3.0 } else { 1.0 };
+    let (bid_vol_mult, ask_vol_mult) = if inv_fraction > 0.5 {
+        (loading_multiplier, 1.0) // Long: pull back bids
+    } else if inv_fraction < -0.5 {
+        (1.0, loading_multiplier) // Short: pull back asks
+    } else {
+        (1.0, 1.0)
+    };
 
     // ─── Phase 9K: Trend Awareness (Asymmetric Skewing) ─────────────────────
     // Instead of shutting off the grid, we push the "dangerous" side incredibly deep
@@ -165,7 +177,9 @@ pub fn compute_quote_grid(
 
         // Bids: placed below mid, shifted down when long (Soft Exit), shifted down when downtrend
         if allow_bids {
-            let bid_price = round_to_5_sig_figs(snap_to_tick(mid_price - sp - skew_amount - bid_trend_skew, config.tick_size));
+            let sp_final = sp * bid_vol_mult;
+            let raw_price = mid_price - sp_final - skew_amount - bid_trend_skew;
+            let bid_price = snap_to_tick(round_to_5_sig_figs(raw_price), config.tick_size);
             if bid_price > 0.0 {
                 grid.bids.push(GridQuote {
                     side: "bid",
@@ -179,9 +193,10 @@ pub fn compute_quote_grid(
 
         // Asks: placed above mid, shifted down when long (Soft Exit), shifted up when uptrend
         if allow_asks {
-            let ask_price = round_to_5_sig_figs(snap_to_tick(mid_price + sp - skew_amount + ask_trend_skew, config.tick_size));
+            let sp_final = sp * ask_vol_mult;
+            let raw_price = mid_price + sp_final - skew_amount + ask_trend_skew;
+            let ask_price = snap_to_tick(round_to_5_sig_figs(raw_price), config.tick_size);
             if ask_price > mid_price * 0.9 {
-                // Sanity: ask must stay above 90% of mid (don't accidentally cross)
                 grid.asks.push(GridQuote {
                     side: "ask",
                     layer,

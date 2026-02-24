@@ -82,6 +82,20 @@ pub struct Trade {
     pub time: u64,
 }
 
+/// A private trade fill event for the authenticated user.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserFill {
+    pub coin: String,
+    pub px: String,
+    pub sz: String,
+    pub side: String,
+    pub dir: String,
+    pub closed_pnl: String,
+    pub hash: String,
+    pub tid: u64,
+}
+
 // ─── Funding / Market Context ─────────────────────────────────────────────────
 
 /// Dynamic market data for secondary use (e.g., continuous funding bias).
@@ -104,6 +118,8 @@ pub struct MarketDataBuffer {
     pub trade_buffers: HashMap<String, VecDeque<Trade>>,
     /// Map of Coin → Funding/OI context.
     pub contexts: HashMap<String, MarketContext>,
+    /// Recent private fills for the user.
+    pub user_fills: VecDeque<UserFill>,
     /// Last time any WS message was received (epoch ms). Used for stall detection.
     pub last_ws_message_ms: u64,
 }
@@ -114,6 +130,7 @@ impl MarketDataBuffer {
             l2_books: HashMap::new(),
             trade_buffers: HashMap::new(),
             contexts: HashMap::new(),
+            user_fills: VecDeque::new(),
             last_ws_message_ms: now_ms(),
         }
     }
@@ -143,6 +160,14 @@ impl MarketDataBuffer {
 
     pub fn update_context(&mut self, coin: String, ctx: MarketContext) {
         self.contexts.insert(coin, ctx);
+    }
+
+    pub fn add_user_fill(&mut self, fill: UserFill) {
+        self.touch();
+        if self.user_fills.len() >= 500 {
+            self.user_fills.pop_front();
+        }
+        self.user_fills.push_back(fill);
     }
 }
 
@@ -276,9 +301,9 @@ pub async fn fetch_universe_and_ctx(
                     buf.update_context(coin.clone(), ctx);
                 }
 
-                // Sort by volume and take top 30 liquid assets
+                // Sort by volume and take top 100 liquid assets (Phase 7.1 broadening)
                 coin_volumes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-                coins = coin_volumes.into_iter().take(30).map(|(c, _)| c).collect();
+                coins = coin_volumes.into_iter().take(100).map(|(c, _)| c).collect();
                 info!("Ingestor: Top {} assets by volume selected.", coins.len());
             }
         }
@@ -302,6 +327,7 @@ pub async fn connect_and_listen(
     buffer: Arc<Mutex<MarketDataBuffer>>,
     stall_panic: StallPanicFlag,
     harvest_ticks: bool, // Phase 9C toggle
+    user_address: Option<String>, // Phase 7.2: Real-time user fills
 ) -> Result<(), Box<dyn std::error::Error>> {
 
     // Refresh market context every 60 seconds in the background.
@@ -383,6 +409,19 @@ pub async fn connect_and_listen(
                     tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
                 }
 
+                // Phase 7.2: Subscribe to private user fills if address provided
+                if let Some(ref addr) = user_address {
+                    let fill_sub = serde_json::json!({
+                        "method": "subscribe",
+                        "subscription": { "type": "userFills", "user": addr }
+                    });
+                    if let Err(e) = write.send(Message::Text(fill_sub.to_string())).await {
+                        error!("Failed to subscribe to userFills for {}: {}", addr, e);
+                    } else {
+                        info!("✅ Subscribed to userFills for {}.", addr);
+                    }
+                }
+
                 // ─── Message Loop ─────────────────────────────────────────────
                 while let Some(msg) = read.next().await {
                     // Phase 9D: Record receipt timestamp
@@ -408,8 +447,6 @@ pub async fn connect_and_listen(
                                                     .collect()
                                             };
 
-                                            // Hyperliquid sends levels as [bids_array, asks_array]
-                                            // OR as data["levels"][0] = bids, [1] = asks
                                             let (bids, asks) = if let Some(levels_arr) = data["levels"].as_array() {
                                                 let bids: Vec<L2Level> = levels_arr.get(0)
                                                     .and_then(|v| v.as_array())
@@ -431,14 +468,27 @@ pub async fn connect_and_listen(
                                                     asks,
                                                     received_at_ms,
                                                 };
+                                                if harvest_ticks { harvest_tick_to_csv(&snap); }
+                                                buffer.lock().unwrap().update_l2(snap);
+                                            }
+                                        }
+                                    }
 
-                                                // Phase 9C: Harvest tick to CSV if enabled
-                                                if harvest_ticks {
-                                                    harvest_tick_to_csv(&snap);
+                                    // ── Private User Fills ───────────────────────
+                                    "userFills" => {
+                                        if let Some(data) = parsed.get("data") {
+                                            // Hyperliquid sends 'isSnapshot' (camelCase)
+                                            let is_snap = data["isSnapshot"].as_bool().unwrap_or(false);
+                                            if !is_snap {
+                                                if let Some(fills) = data["fills"].as_array() {
+                                                    let mut buf = buffer.lock().unwrap();
+                                                    for f_val in fills {
+                                                        if let Ok(fill) = serde_json::from_value::<UserFill>(f_val.clone()) {
+                                                            info!("🔔 [PRIVATE FILL] {} {} {} @ {}", fill.coin, fill.side, fill.sz, fill.px);
+                                                            buf.add_user_fill(fill);
+                                                        }
+                                                    }
                                                 }
-
-                                                let mut buf = buffer.lock().unwrap();
-                                                buf.update_l2(snap);
                                             }
                                         }
                                     }

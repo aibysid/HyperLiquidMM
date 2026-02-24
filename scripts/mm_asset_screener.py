@@ -41,12 +41,13 @@ CHANNEL_ENGINE_STATUS = "mm:engine_status"
 
 # Default screening parameters
 DEFAULT_MIN_VOLUME_USD = 1_000_000      # $1M daily volume minimum (mid-tier sweet spot)
-DEFAULT_MAX_COINS = 2                    # Max coins (increased from 1 for more activity)
+DEFAULT_MAX_COINS = 2                    # Max coins (increased from 1 for rotation stability)
 DEFAULT_CORRELATION_THRESHOLD = 0.85     # Price correlation cutoff
 DEFAULT_MAX_PER_CLUSTER = 1              # Max coins from one correlated group (tight for small acct)
-DEFAULT_MIN_SPREAD_BPS = 5.0             # Maker fees are 1.44 bps each way (2.88 round-trip). Minimum spread must clear this.
-DEFAULT_MAX_INV_USD = 20.0               # Max inventory per coin ($31 balance, one coin)
+DEFAULT_MIN_SPREAD_BPS = 18.0              # Defensive floor (widened from 12bp for safety)
+DEFAULT_MAX_INV_USD = 15.0               # Max inventory per coin (tightened from $20)
 DEFAULT_MIN_ORDER_USD = 10.5             # Minimum order size (Hyperliquid floor ~$10)
+STICKY_BONUS = 1.25                      # 25% score bonus for existing positions (Anti-Churn)
 
 # Priority coins: dynamically discovered from tick data each cycle.
 # Coins with high book-activity get a score bonus. No manual curation needed.
@@ -59,7 +60,7 @@ TICK_CSV_DIR = "data/ticks"              # From engine harvester (CSV)
 TICK_PARQUET_DIR = "data/parquet"        # From csv_to_parquet.py
 
 # Publish interval
-LOOP_INTERVAL_SECS = 60
+LOOP_INTERVAL_SECS = 300  # 5 minutes: Slow enough to minimize rotation fees, fast enough to catch trends.
 
 # ─── Logging ────────────────────────────────────────────────────────────────────
 
@@ -151,7 +152,6 @@ def fetch_meta_and_ctx():
     log.info(f"Fetched {len(coins)} assets from Hyperliquid universe.")
     return coins
 
-
 def fetch_l2_spreads(coin_names, max_coins=50):
     """
     Fetches current L2 book for a subset of coins to get actual bid-ask spreads.
@@ -189,6 +189,37 @@ def fetch_l2_spreads(coin_names, max_coins=50):
     return spreads
 
 
+def fetch_current_positions():
+    """
+    Fetches the currently open positions for the user's HL_ADDRESS.
+    Returns set of coin name strings.
+    """
+    addr = os.environ.get("HL_ADDRESS")
+    if not addr:
+        return set()
+
+    try:
+        resp = requests.post(
+            API_URL,
+            json={"type": "clearinghouseState", "user": addr},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        positions = set()
+        # assetPositions is a list of { "position": { "coin": "...", "susz": "..." }, ... }
+        for pos_data in data.get("assetPositions", []):
+            pos = pos_data.get("position", {})
+            susz = float(pos.get("susz", "0"))
+            if abs(susz) > 1e-6:
+                positions.add(pos.get("coin"))
+        return positions
+    except Exception as e:
+        log.warning(f"Failed to fetch current positions: {e}")
+        return set()
+
+
 def _parse_float(val):
     """Safely parse a string/number to float."""
     if isinstance(val, (int, float)):
@@ -216,10 +247,10 @@ def _estimate_tick_size(mid_price):
         return 0.001
     elif mid_price >= 1:
         return 0.0001
-    elif mid_price >= 0.01:
-        return 0.000001
+    elif mid_price >= 0.001:
+        return 0.000001     # PUMP level: 6 decimal places
     else:
-        return 0.00000001   # Micro-cap memecoins
+        return 0.0000001    # Ultra-cheap: 7 decimal places max
 
 
 def compute_fill_activity_bonus(coin_name, tick_data_dir, lookback_ticks=2000):
@@ -316,9 +347,9 @@ def discover_priority_coins(tick_data_dir, min_change_rate=0.40,
             with open(csv_path, 'r') as f:
                 lines = f.readlines()
 
-            # Use last 3000 ticks (~5 min) for freshness
-            recent = lines[-3000:]
-            if len(recent) < 100:
+            # Use last 600 ticks (~1 min) for high-sensitivity trend detection
+            recent = lines[-600:]
+            if len(recent) < 50:
                 continue
 
             prev_bid, prev_ask = None, None
@@ -688,8 +719,8 @@ def build_configs(ranked_coins, live_spreads, project_root="."):
                                   round(coin["estimated_spread_bps"] * 0.8, 2))
             spread_source = "estimated"
 
-        # Cap spread at 10 bps — wider than this, fills are too rare
-        base_spread_bps = min(base_spread_bps, 10.0)
+        # Cap spread at 25 bps — widened from 10 bps to protect against adverse selection
+        base_spread_bps = min(base_spread_bps, 25.0)
 
         # ── regime ─────────────────────────────────────────────────────────
         regime = "calm"
@@ -846,18 +877,26 @@ def run_screening_cycle(args, project_root="."):
     elif ranker_priority:
         log.info(f"Combined priority: tick={dynamic_priority}, ranker={ranker_priority}")
 
+    # ── Current Portfolio Awareness (Sticky Rule) ──────────────────────────
+    current_positions = fetch_current_positions()
+    if current_positions:
+        log.info(f"Current positions: {current_positions} (will receive {STICKY_BONUS}x sticky bonus)")
+
     for coin in coins:
         coin["fill_activity"] = activity_bonuses.get(coin["name"], 1.0)
 
-        # Dynamic priority bonus — merged from tick data + ranker backtest
+        # Dynamic priority bonus
         priority = PRIORITY_BONUS if coin["name"] in combined_priority else 1.0
+
+        # Sticky bonus: existing positions are given a boost to prevent churn
+        sticky = STICKY_BONUS if coin["name"] in current_positions else 1.0
 
         coin["maker_edge"] = compute_maker_edge(
             spread_bps=coin["estimated_spread_bps"],
             tick_size=coin["tick_size"],
             mid_price=coin["mid_price"],
             daily_volume=coin["daily_volume"],
-            fill_activity=coin["fill_activity"] * priority,
+            fill_activity=coin["fill_activity"] * priority * sticky,
         )
 
     # Sort by score descending

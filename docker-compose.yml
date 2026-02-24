@@ -32,7 +32,7 @@ services:
     container_name: mm_redis
     ports:
       - "6380:6379"   # Host port 6380 avoids clash with directional bot's Redis on 6379
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -53,9 +53,14 @@ services:
     environment:
       - RUST_LOG=info
       - REDIS_URL=redis://mm-redis:6379
-      - MM_SHADOW_MODE=${MM_SHADOW_MODE:-true}   # Default: shadow. Override to go live.
+      - MM_SHADOW_MODE=false   # LIVE MODE ENABLED
       - MM_HARVEST_TICKS=true
-    restart: unless-stopped
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"] # Mock health check or just check process
+      interval: 30s
+      timeout: 10s
+      retries: 3
     volumes:
       # Tick data persisted on the host — survives container restarts/rebuilds.
       # This is your growing proprietary dataset.
@@ -84,7 +89,7 @@ services:
         condition: service_started
     environment:
       - REDIS_URL=redis://mm-redis:6379
-    restart: unless-stopped
+    restart: always
     volumes:
       # Mount shared tick data volume (read-only) for spread calibration
       - mm_tick_data:/app/data/ticks:ro
@@ -108,7 +113,7 @@ services:
       - RANK_INTERVAL_HOURS=6
       - REDIS_URL=redis://mm-redis:6379
     entrypoint: ["bash", "scripts/cron_ranker.sh"]
-    restart: unless-stopped
+    restart: always
     volumes:
       # Shared tick data for backtesting (read-only)
       - mm_tick_data:/app/data/ticks:ro

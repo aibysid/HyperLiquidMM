@@ -120,9 +120,34 @@ async fn main() {
     // ─── Phase 9B: Spawn L2 ingestor ─────────────────────────────────────────
     {
         let c = coins.clone(); let b = data_buffer.clone(); let s = stall_panic.clone();
+        let addr = if shadow_mode { None } else { std::env::var("HL_ADDRESS").ok() };
         tokio::spawn(async move {
-            if let Err(e) = ingestor::connect_and_listen(c, b, s, harvest_ticks).await {
+            if let Err(e) = ingestor::connect_and_listen(c, b, s, harvest_ticks, addr).await {
                 log::error!("Ingestor crashed: {}", e);
+            }
+        });
+    }
+
+    // ─── Phase 7.2: Private Fill Processor ───────────────────────────────────
+    {
+        let b = data_buffer.clone(); let ee = exec_engine.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                let fills: Vec<_> = {
+                    let mut buf = b.lock().unwrap();
+                    std::mem::take(&mut buf.user_fills).into_iter().collect()
+                };
+                
+                if !fills.is_empty() {
+                    let mut eng = ee.lock().await;
+                    for fill in fills {
+                        let sz: f64 = fill.sz.parse().unwrap_or(0.0);
+                        let is_buy = fill.side == "B";
+                        log::info!("🔔 [PRIVATE FILL] Applying trade: {} {} {} @ {}", fill.coin, fill.side, sz, fill.px);
+                        eng.inventory.apply_fill(&fill.coin, is_buy, sz);
+                    }
+                }
             }
         });
     }
@@ -190,8 +215,8 @@ async fn main() {
     log::info!("✅ All systems active. Entering main quoting loop…");
 
     // Per-coin watermark: last trade timestamp we already fed into the estimator.
-    // Prevents re-feeding buffered history every tick.
     let mut last_trade_ts: HashMap<String, u64> = HashMap::new();
+    let mut last_active_coins: HashSet<String> = HashSet::new();
 
     loop {
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
@@ -208,6 +233,19 @@ async fn main() {
         // ── Phase 9H: Latest screener configs ─────────────────────────────────
         let asset_configs: HashMap<String, MmAssetConfig> = config_rx.borrow()
             .iter().map(|c| (c.asset.clone(), c.clone())).collect();
+        
+        let current_active_coins: HashSet<String> = asset_configs.keys().cloned().collect();
+        
+        // ── Phase 7: Instant Flush on Whitelist Change ────────────────────────
+        if !shadow_mode && current_active_coins != last_active_coins {
+            let removed: Vec<_> = last_active_coins.difference(&current_active_coins).collect();
+            if !removed.is_empty() {
+                log::warn!("[MAIN] Whitelist changed. Assets removed: {:?}. Triggering instant flush.", removed);
+                let mut eng = exec_engine.lock().await;
+                eng.flush_orphaned_positions(&current_active_coins).await;
+            }
+            last_active_coins = current_active_coins.clone();
+        }
 
         // ── Phase 9B: Snapshot L2 data ────────────────────────────────────────
         let (l2_snap, trade_snap) = {
@@ -220,9 +258,9 @@ async fn main() {
             static LAST_RECONCILE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
             let now_ms = chrono::Utc::now().timestamp_millis() as u64;
             let last_rec = LAST_RECONCILE.load(Ordering::Relaxed);
-            if now_ms - last_rec > 30_000 {
+            if now_ms - last_rec > 120_000 {
                 LAST_RECONCILE.store(now_ms, Ordering::Relaxed);
-                log::info!("[MAIN] Triggering 30s global reconciliation and flush check...");
+                log::info!("[MAIN] Triggering 120s global reconciliation and flush check...");
                 let mut eng = exec_engine.lock().await;
                 match eng.exchange.get_positions().await {
                     Ok(positions) => {
@@ -239,11 +277,14 @@ async fn main() {
         }
 
         // ── Per-asset loop ─────────────────────────────────────────────────────
-        for (coin, snap) in &l2_snap {
-            let config = match asset_configs.get(coin) {
-                Some(c) if c.regime != "halt" => c.clone(),
-                _ => continue,
+        // Phase 9O Optimization: Only iterate over whitelisted assets to reduce loop latency.
+        for (coin, config) in &asset_configs {
+            let snap = match l2_snap.get(coin) {
+                Some(s) => s,
+                None => continue,
             };
+            if config.regime == "halt" { continue; }
+            
             let mid = match snap.mid_price() {
                 Some(m) if m > 0.0 => m,
                 _ => continue,
@@ -337,33 +378,88 @@ async fn main() {
             } else {
                 // ── Phase 9J: LIVE order placement ──────────────────────────────
 
-                // Rate-limit: only refresh orders every 5 seconds per coin
-                // (gives orders time to rest and get filled before cancelling)
+                // Rate-limit: only refresh orders every 500ms per coin (Phase 9O Speed Optimization)
                 let now_ms = chrono::Utc::now().timestamp_millis() as u64;
                 let last_refresh = last_trade_ts.get(coin).cloned().unwrap_or(0);
-                if now_ms - last_refresh < 5000 {
+                if now_ms - last_refresh < 500 {
                     continue;
                 }
                 last_trade_ts.insert(coin.clone(), now_ms);
 
                 let mut eng = exec_engine.lock().await;
 
-                // Step 1: Check inventory — skip this coin if at max
+                // Step 1: Check inventory — skip the side that increases risk if at max
                 let inv_coins = eng.inventory.positions.get(coin).cloned().unwrap_or(0.0);
                 let inv_usd_abs = (inv_coins * mid).abs();
+                
+                let mut suppress_bids = false;
+                let mut suppress_asks = false;
+
                 if inv_usd_abs > config.max_inv_usd {
-                    log::warn!(
-                        "[LIVE] {} inventory ${:.2} > max ${:.2} — skipping quotes",
-                        coin, inv_usd_abs, config.max_inv_usd
-                    );
-                    let _ = eng.exchange.cancel_coin_orders(coin).await;
-                    continue;
+                    if inv_coins > 0.0 {
+                        // We are LONG and over limit: Stop buying (suppress bids), but allow selling.
+                        suppress_bids = true;
+                        log::warn!(
+                            "[LIVE] {} inventory ${:.2} > max ${:.2} (LONG) — Suppressing BIDS to reduce risk.",
+                            coin, inv_usd_abs, config.max_inv_usd
+                        );
+                    } else if inv_coins < 0.0 {
+                        // We are SHORT and over limit: Stop shorting (suppress asks), but allow buying.
+                        suppress_asks = true;
+                        log::warn!(
+                            "[LIVE] {} inventory ${:.2} > max ${:.2} (SHORT) — Suppressing ASKS to reduce risk.",
+                            coin, inv_usd_abs, config.max_inv_usd
+                        );
+                    }
                 }
 
-                // Step 2: Cancel ONLY this coin's orders (not all coins!)
+                // Step 2 & 3: Sticky Logic (Phase 9O)
+                let all_quotes: Vec<_> = grid.bids.iter().chain(grid.asks.iter())
+                    .filter(|q| {
+                        if q.side == "bid" && suppress_bids { return false; }
+                        if q.side == "ask" && suppress_asks { return false; }
+                        true
+                    })
+                    .collect();
+
+                let open_orders = match eng.exchange.get_open_orders(coin).await {
+                    Ok(orders) => orders,
+                    Err(_) => Vec::new(),
+                };
+
+                let sticky_threshold = mid * (config.base_spread_bps / 10_000.0) * 0.2;
+                let mut all_sticky = !all_quotes.is_empty() && !open_orders.is_empty();
+
+                for quote in &all_quotes {
+                    let side_wire = if quote.side == "bid" { "B" } else { "A" };
+                    let existing = open_orders.iter().find(|o| {
+                        let o_side = o["side"].as_str().unwrap_or("");
+                        let o_px = o["limitPx"].as_str().unwrap_or("0").parse::<f64>().unwrap_or(0.0);
+                        let matched = o_side == side_wire && (o_px - quote.price).abs() < sticky_threshold;
+                        if !matched && o_side == side_wire {
+                            log::trace!("[STICKY-DEBUG] Side match but Price Diff: {:.6} > {:.6}", (o_px - quote.price).abs(), sticky_threshold);
+                        }
+                        matched
+                    });
+
+                    if existing.is_none() {
+                        all_sticky = false;
+                        break;
+                    }
+                }
+
+                if all_sticky && open_orders.len() == all_quotes.len() {
+                    // All target quotes are already represented by resting orders. Skip reset (Preserves Queue).
+                    log::info!("[STICKY] {} orders are within 20% of target. Skipping reset. threshold={:.6}", coin, sticky_threshold);
+                    continue;
+                } else if !all_quotes.is_empty() {
+                    log::trace!("[STICKY-DEBUG] {} not sticky: q_len={} o_len={} all_s={}", coin, all_quotes.len(), open_orders.len(), all_sticky);
+                }
+
+                // Step 3: Cancel ONLY this coin's orders (not all coins!)
                 let _ = eng.exchange.cancel_coin_orders(coin).await;
 
-                // Step 2.5: Atomic Margin Check (Phase 9L)
+                // Step 4: Atomic Margin Check (Phase 9L)
                 let total_grid_notional: f64 = grid.bids.iter().map(|b| b.size_usd).sum::<f64>() 
                                              + grid.asks.iter().map(|a| a.size_usd).sum::<f64>();
                 
@@ -372,13 +468,16 @@ async fn main() {
                     continue;
                 }
 
-                // Step 3: Place grid quotes (bids + asks)
-                let all_quotes: Vec<_> = grid.bids.iter().chain(grid.asks.iter()).collect();
+                // Step 5: Place grid quotes (bids + asks)
                 let mut placed = 0u32;
                 let mut errors = 0u32;
 
                 for quote in &all_quotes {
-                    let direction = if quote.side == "bid" { "LONG" } else { "SHORT" };
+                    let side_is_bid = quote.side == "bid";
+                    if side_is_bid && suppress_bids { continue; }
+                    if !side_is_bid && suppress_asks { continue; }
+
+                    let direction = if side_is_bid { "LONG" } else { "SHORT" };
                     let size_coins = quote.size_usd / mid;  // Convert USD notional → coin units
 
                     match eng.exchange.open_order(
