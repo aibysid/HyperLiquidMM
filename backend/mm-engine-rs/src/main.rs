@@ -378,10 +378,11 @@ async fn main() {
             } else {
                 // ── Phase 9J: LIVE order placement ──────────────────────────────
 
-                // Rate-limit: only refresh orders every 500ms per coin (Phase 9O Speed Optimization)
+                // Rate-limit: only refresh orders every 30,000ms (30s) per coin
+                // This resolves the "Too many cumulative requests" deadlock for small accounts.
                 let now_ms = chrono::Utc::now().timestamp_millis() as u64;
                 let last_refresh = last_trade_ts.get(coin).cloned().unwrap_or(0);
-                if now_ms - last_refresh < 500 {
+                if now_ms - last_refresh < 30_000 {
                     continue;
                 }
                 last_trade_ts.insert(coin.clone(), now_ms);
@@ -427,7 +428,8 @@ async fn main() {
                     Err(_) => Vec::new(),
                 };
 
-                let sticky_threshold = mid * (config.base_spread_bps / 10_000.0) * 0.2;
+                // Increased sticky threshold to 50% of spread to further reduce churn
+                let sticky_threshold = mid * (config.base_spread_bps / 10_000.0) * 0.5;
                 let mut all_sticky = !all_quotes.is_empty() && !open_orders.is_empty();
 
                 for quote in &all_quotes {
