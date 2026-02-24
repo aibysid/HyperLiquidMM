@@ -1,0 +1,342 @@
+mm_engine  | [2026-02-23T17:46:29Z WARN  mm_engine_rs::execution] [RECONCILE] VVV internal=0.000000 live=6.250000 delta=6.250000 (dark fill detected)
+mm_engine  | [2026-02-23T17:46:29Z WARN  mm_engine_rs::execution] [RECONCILE] PROMPT internal=0.000000 live=228.000000 delta=228.000000 (dark fill detected)
+mm_engine  | [2026-02-23T17:46:31Z WARN  mm_engine_rs::execution] [FLUSH] Orphaned position detected: VVV (6.2500 coins). Closing via Maker order @ $3.824800...
+mm_engine  | [2026-02-23T17:46:32Z INFO  mm_engine_rs::execution] [FLUSH] Successfully placed maker-close for VVV.
+mm_engine  | [2026-02-23T17:46:32Z WARN  mm_engine_rs::execution] [FLUSH] Orphaned position detected: PROMPT (228.0000 coins). Closing via Maker order @ $0.052372...
+mm_engine  | [2026-02-23T17:46:32Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:46:33Z INFO  mm_engine_rs::execution] [FLUSH] Successfully placed maker-close for PROMPT.
+mm_engine  | [2026-02-23T17:46:49Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=0 all_s=false
+mm_engine  | [2026-02-23T17:46:51Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052037 sz=229.4850 coins ($12.00)
+mm_engine  | [2026-02-23T17:46:51Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052299 sz=229.4850 coins ($12.00)
+mm_engine  | [2026-02-23T17:46:51Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0523 inv=$11.92 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:46:51Z WARN  mm_engine_rs] [LIVE] VVV inventory $23.90 > max $20.00 (LONG) — Suppressing BIDS to reduce risk.
+mm_engine  | [2026-02-23T17:46:52Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=1 o_len=0 all_s=false
+mm_engine  | [2026-02-23T17:46:53Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.823900 sz=3.1386 coins ($12.00)
+mm_engine  | [2026-02-23T17:46:53Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8233 inv=$23.90 placed=1/1 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:46:53Z WARN  mm_engine_rs] [LIVE] VVV inventory $23.89 > max $20.00 (LONG) — Suppressing BIDS to reduce risk.
+mm_engine  | [2026-02-23T17:46:53Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=1 o_len=0 all_s=false
+mm_engine  | [2026-02-23T17:46:54Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.822500 sz=3.1398 coins ($12.00)
+mm_engine  | [2026-02-23T17:46:54Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8220 inv=$23.89 placed=1/1 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:46:54Z INFO  mm_engine_rs] [STICKY] PROMPT orders are within 20% of target. Skipping reset. threshold=0.000010
+mm_engine  | [2026-02-23T17:46:54Z WARN  mm_engine_rs] [LIVE] VVV inventory $23.89 > max $20.00 (LONG) — Suppressing BIDS to reduce risk.
+mm_engine  | [2026-02-23T17:46:54Z INFO  mm_engine_rs] [STICKY] VVV orders are within 20% of target. Skipping reset. threshold=0.000382
+mm_engine  | [2026-02-23T17:46:54Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:46:56Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:46:56Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052024 sz=229.5443 coins ($12.00)
+mm_engine  | [2026-02-23T17:46:57Z WARN  mm_engine_rs] [LIVE] PROMPT ask L1 order failed: Invalid Order: Post only order would have immediately matched, bbo was 0.052316@0.05238. asset=188
+mm_engine  | [2026-02-23T17:46:57Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0523 inv=$11.92 placed=1/2 errors=1 regime=1.00x
+mm_engine  | [2026-02-23T17:46:57Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:46:58Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:46:58Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052099 sz=229.2154 coins ($12.00)
+mm_engine  | [2026-02-23T17:46:59Z WARN  mm_engine_rs] [LIVE] PROMPT ask L1 order failed: Invalid Order: Post only order would have immediately matched, bbo was 0.052371@0.052381. asset=188
+mm_engine  | [2026-02-23T17:46:59Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0524 inv=$11.94 placed=1/2 errors=1 regime=1.00x
+mm_engine  | [2026-02-23T17:46:59Z WARN  mm_engine_rs] [LIVE] VVV inventory $23.89 > max $20.00 (LONG) — Suppressing BIDS to reduce risk.
+mm_engine  | [2026-02-23T17:47:00Z INFO  mm_engine_rs] [STICKY] VVV orders are within 20% of target. Skipping reset. threshold=0.000382
+mm_engine  | [2026-02-23T17:47:00Z WARN  mm_engine_rs::execution] [RECONCILE] VVV internal=6.250000 live=-3.140000 delta=-9.390000 (dark fill detected)
+mm_engine  | [2026-02-23T17:47:00Z INFO  mm_engine_rs] [MAIN] Active screener assets: {"VVV", "PROMPT"}
+mm_engine  | [2026-02-23T17:47:01Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:47:01Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:47:02Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052122 sz=229.1126 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:03Z WARN  mm_engine_rs] [LIVE] PROMPT ask L1 order failed: Invalid Order: Post only order would have immediately matched, bbo was 0.052389@0.052442. asset=188
+mm_engine  | [2026-02-23T17:47:03Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0524 inv=$11.94 placed=1/2 errors=1 regime=1.00x
+mm_engine  | [2026-02-23T17:47:03Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=0 all_s=false
+mm_engine  | [2026-02-23T17:47:04Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.821700 sz=3.1395 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:05Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.831300 sz=3.1395 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:05Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8223 inv=$12.00 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:47:05Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:47:06Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:47:07Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052219 sz=228.6890 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:07Z WARN  mm_engine_rs] [LIVE] PROMPT ask L1 order failed: Invalid Order: Post only order would have immediately matched, bbo was 0.052528@0.052565. asset=188
+mm_engine  | [2026-02-23T17:47:07Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0525 inv=$11.96 placed=1/2 errors=1 regime=1.00x
+mm_engine  | [2026-02-23T17:47:07Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:47:09Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:47:09Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.828400 sz=3.1340 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:10Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.837900 sz=3.1340 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:10Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8289 inv=$12.02 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:47:10Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:47:11Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:47:12Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052363 sz=228.0567 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:12Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052626 sz=228.0567 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:12Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0526 inv=$12.00 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:47:12Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:47:13Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:47:14Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.828900 sz=3.1336 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:15Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.838400 sz=3.1336 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:15Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8294 inv=$12.02 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:47:15Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:47:16Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:47:17Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.832900 sz=3.1303 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:17Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.842500 sz=3.1303 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:17Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8335 inv=$12.04 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:47:18Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:47:20Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:47:21Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052298 sz=228.3431 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:22Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052560 sz=228.3431 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:22Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0526 inv=$11.98 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:47:22Z INFO  mm_engine_rs] [STICKY] PROMPT orders are within 20% of target. Skipping reset. threshold=0.000011
+mm_engine  | [2026-02-23T17:47:22Z INFO  mm_engine_rs] [STICKY] VVV orders are within 20% of target. Skipping reset. threshold=0.000383
+mm_engine  | [2026-02-23T17:47:22Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:47:23Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:47:24Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052291 sz=228.3735 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:25Z WARN  mm_engine_rs] [LIVE] PROMPT ask L1 order failed: Invalid Order: Post only order would have immediately matched, bbo was 0.052608@0.052665. asset=188
+mm_engine  | [2026-02-23T17:47:25Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0525 inv=$11.98 placed=1/2 errors=1 regime=1.00x
+mm_engine  | [2026-02-23T17:47:25Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:47:26Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:47:26Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052381 sz=227.9787 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:27Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052644 sz=227.9787 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:27Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0526 inv=$12.00 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:47:27Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:47:28Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 1/1
+mm_engine  | [2026-02-23T17:47:29Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.832700 sz=3.1305 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:29Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.842300 sz=3.1305 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:29Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8333 inv=$12.04 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:47:30Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:47:31Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:47:32Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.836300 sz=3.1275 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:33Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.845900 sz=3.1275 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:33Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8369 inv=$12.05 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:47:33Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:47:35Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:47:36Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052362 sz=228.0632 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:36Z WARN  mm_engine_rs] [LIVE] PROMPT ask L1 order failed: Invalid Order: Post only order would have immediately matched, bbo was 0.052631@0.052694. asset=188
+mm_engine  | [2026-02-23T17:47:36Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0526 inv=$12.00 placed=1/2 errors=1 regime=1.00x
+mm_engine  | [2026-02-23T17:47:37Z WARN  mm_engine_rs::execution] [RECONCILE] VVV internal=-3.140000 live=-3.150000 delta=-0.010000 (dark fill detected)
+mm_engine  | [2026-02-23T17:47:37Z WARN  mm_engine_rs::execution] [RECONCILE] PROMPT internal=228.000000 live=-228.000000 delta=-456.000000 (dark fill detected)
+mm_engine  | [2026-02-23T17:47:37Z INFO  mm_engine_rs] [MAIN] Active screener assets: {"LINK", "PROMPT"}
+mm_engine  | [2026-02-23T17:47:37Z WARN  mm_engine_rs::execution] [FLUSH] Orphaned position detected: VVV (3.1500 coins). Closing via Maker order @ $3.837500...
+mm_engine  | [2026-02-23T17:47:38Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:47:39Z INFO  mm_engine_rs::execution] [FLUSH] Successfully placed maker-close for VVV.
+mm_engine  | [2026-02-23T17:47:41Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:47:42Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:47:42Z WARN  mm_engine_rs] [LIVE] PROMPT bid L1 order failed: Invalid Order: Post only order would have immediately matched, bbo was 0.052585@0.052653. asset=188
+mm_engine  | [2026-02-23T17:47:43Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052760 sz=227.8661 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:43Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0527 inv=$12.01 placed=1/2 errors=1 regime=1.00x
+mm_engine  | [2026-02-23T17:47:43Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:47:44Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:47:45Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052651 sz=227.8834 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:46Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052756 sz=227.8834 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:46Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0527 inv=$12.01 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:47:49Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:47:50Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:47:51Z WARN  mm_engine_rs] [LIVE] PROMPT bid L1 order failed: Invalid Order: Post only order would have immediately matched, bbo was 0.052496@0.052559. asset=188
+mm_engine  | [2026-02-23T17:47:52Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052768 sz=227.8294 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:52Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0527 inv=$12.01 placed=1/2 errors=1 regime=1.00x
+mm_engine  | [2026-02-23T17:47:52Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:47:53Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:47:54Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052509 sz=228.4974 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:55Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052614 sz=228.4974 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:55Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0525 inv=$11.97 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:47:55Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:47:57Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:47:58Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052561 sz=228.2714 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:58Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052666 sz=228.2714 coins ($12.00)
+mm_engine  | [2026-02-23T17:47:58Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0526 inv=$11.99 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:47:59Z INFO  mm_engine_rs] [STICKY] PROMPT orders are within 20% of target. Skipping reset. threshold=0.000011
+mm_engine  | [2026-02-23T17:48:02Z INFO  mm_engine_rs] [STICKY] PROMPT orders are within 20% of target. Skipping reset. threshold=0.000011
+mm_engine  | [2026-02-23T17:48:09Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:48:10Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:48:11Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052474 sz=228.6498 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:12Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052579 sz=228.6498 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:12Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0525 inv=$11.97 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:48:12Z WARN  mm_engine_rs::execution] [RECONCILE] PROMPT internal=-228.000000 live=228.000000 delta=456.000000 (dark fill detected)
+mm_engine  | [2026-02-23T17:48:12Z INFO  mm_engine_rs] [MAIN] Active screener assets: {"LINK", "PROMPT"}
+mm_engine  | [2026-02-23T17:48:15Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:48:17Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:48:18Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052238 sz=228.6041 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:18Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052500 sz=228.6041 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:18Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0525 inv=$11.97 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:48:18Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:48:20Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:48:20Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052227 sz=228.6520 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:21Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052489 sz=228.6520 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:21Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0525 inv=$11.97 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:48:21Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:48:23Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:48:23Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052177 sz=228.8700 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:24Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052439 sz=228.8700 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:24Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0524 inv=$11.95 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:48:24Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=0 all_s=false
+mm_engine  | [2026-02-23T17:48:25Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.838800 sz=3.1255 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:26Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.848400 sz=3.1255 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:26Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8394 inv=$12.09 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:48:26Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:48:27Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:48:28Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052029 sz=229.5223 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:29Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052290 sz=229.5223 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:29Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0523 inv=$11.92 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:48:29Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:48:31Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:48:31Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.839800 sz=3.1247 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:32Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.849400 sz=3.1247 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:32Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8403 inv=$12.10 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:48:32Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:48:33Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:48:33Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052067 sz=229.3556 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:34Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052328 sz=229.3556 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:34Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0523 inv=$11.93 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:48:34Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:48:36Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:48:37Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.846200 sz=3.1195 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:37Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.855800 sz=3.1195 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:37Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8468 inv=$12.12 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:48:38Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:48:39Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:48:40Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052029 sz=229.5223 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:41Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052290 sz=229.5223 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:41Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0523 inv=$11.92 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:48:41Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:48:43Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:48:43Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.848300 sz=3.1178 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:44Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.857900 sz=3.1178 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:44Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8488 inv=$12.12 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:48:44Z WARN  mm_engine_rs::execution] [RECONCILE] PROMPT internal=228.000000 live=-231.000000 delta=-459.000000 (dark fill detected)
+mm_engine  | [2026-02-23T17:48:44Z INFO  mm_engine_rs] [MAIN] Active screener assets: {"PROMPT", "VVV"}
+mm_engine  | [2026-02-23T17:48:46Z INFO  mm_engine_rs] [STICKY] VVV orders are within 20% of target. Skipping reset. threshold=0.000385
+mm_engine  | [2026-02-23T17:48:47Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:48:48Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:48:49Z WARN  mm_engine_rs] [LIVE] PROMPT bid L1 order failed: Invalid Order: Post only order would have immediately matched, bbo was 0.052126@0.052189. asset=188
+mm_engine  | [2026-02-23T17:48:49Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052309 sz=229.8300 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:49Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0522 inv=$12.06 placed=1/2 errors=1 regime=1.00x
+mm_engine  | [2026-02-23T17:48:50Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:48:50Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:48:51Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052150 sz=230.0724 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:51Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052254 sz=230.0724 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:51Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0522 inv=$12.05 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:48:52Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:48:52Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 1/1
+mm_engine  | [2026-02-23T17:48:53Z WARN  mm_engine_rs] [LIVE] VVV bid L1 order failed: Invalid Order: Post only order would have immediately matched, bbo was 3.8418@3.8444. asset=178
+mm_engine  | [2026-02-23T17:48:54Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.857500 sz=3.1181 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:54Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8485 inv=$12.12 placed=1/2 errors=1 regime=1.00x
+mm_engine  | [2026-02-23T17:48:54Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:48:56Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:48:57Z WARN  mm_engine_rs] [LIVE] PROMPT bid L1 order failed: Invalid Order: Post only order would have immediately matched, bbo was 0.05211@0.052172. asset=188
+mm_engine  | [2026-02-23T17:48:57Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052284 sz=229.9401 coins ($12.00)
+mm_engine  | [2026-02-23T17:48:57Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0522 inv=$12.06 placed=1/2 errors=1 regime=1.00x
+mm_engine  | [2026-02-23T17:48:58Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:48:58Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 1/1
+mm_engine  | [2026-02-23T17:48:59Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.842500 sz=3.1225 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:00Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.852100 sz=3.1225 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:00Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8431 inv=$12.11 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:01Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:49:01Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:49:02Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052123 sz=230.1893 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:02Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052227 sz=230.1893 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:02Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0521 inv=$12.04 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:02Z INFO  mm_engine_rs] [STICKY] VVV orders are within 20% of target. Skipping reset. threshold=0.000384
+mm_engine  | [2026-02-23T17:49:03Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:49:04Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:49:05Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052144 sz=230.0966 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:05Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052248 sz=230.0966 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:05Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0522 inv=$12.05 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:06Z INFO  mm_engine_rs] [STICKY] VVV orders are within 20% of target. Skipping reset. threshold=0.000384
+mm_engine  | [2026-02-23T17:49:06Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:49:07Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:49:08Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052210 sz=229.8080 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:09Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052314 sz=229.8080 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:09Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0522 inv=$12.06 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:09Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:49:11Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:49:12Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.843200 sz=3.1219 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:12Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.852800 sz=3.1219 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:12Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8438 inv=$12.11 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:12Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:49:13Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:49:14Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052523 sz=228.4365 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:14Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052628 sz=228.4365 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:14Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0525 inv=$12.13 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:15Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:49:16Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:49:17Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.847300 sz=3.1186 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:17Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.856900 sz=3.1186 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:17Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8479 inv=$12.12 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:18Z WARN  mm_engine_rs::execution] [RECONCILE] VVV internal=-3.150000 live=3.120000 delta=6.270000 (dark fill detected)
+mm_engine  | [2026-02-23T17:49:18Z WARN  mm_engine_rs::execution] [RECONCILE] PROMPT internal=-231.000000 live=-461.000000 delta=-230.000000 (dark fill detected)
+mm_engine  | [2026-02-23T17:49:18Z INFO  mm_engine_rs] [MAIN] Active screener assets: {"VVV", "PROMPT"}
+mm_engine  | [2026-02-23T17:49:19Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:49:21Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:49:22Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.845000 sz=3.1183 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:22Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.848800 sz=3.1183 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:22Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8483 inv=$12.01 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:22Z WARN  mm_engine_rs] [LIVE] PROMPT inventory $24.22 > max $20.00 (SHORT) — Suppressing ASKS to reduce risk.
+mm_engine  | [2026-02-23T17:49:22Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=1 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:49:24Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:49:24Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052538 sz=228.3713 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:24Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0525 inv=$24.22 placed=1/1 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:25Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:49:26Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:49:27Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.845400 sz=3.1179 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:27Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.849300 sz=3.1179 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:27Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8487 inv=$12.01 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:27Z WARN  mm_engine_rs] [LIVE] PROMPT inventory $24.25 > max $20.00 (SHORT) — Suppressing ASKS to reduce risk.
+mm_engine  | [2026-02-23T17:49:27Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=1 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:49:28Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:49:29Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052585 sz=228.1672 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:29Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0526 inv=$24.25 placed=1/1 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:29Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:49:30Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:49:31Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.845800 sz=3.1176 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:32Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.849700 sz=3.1176 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:32Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8491 inv=$12.01 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:32Z WARN  mm_engine_rs] [LIVE] PROMPT inventory $24.23 > max $20.00 (SHORT) — Suppressing ASKS to reduce risk.
+mm_engine  | [2026-02-23T17:49:32Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=1 o_len=0 all_s=false
+mm_engine  | [2026-02-23T17:49:33Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052556 sz=228.2931 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:33Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0526 inv=$24.23 placed=1/1 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:33Z WARN  mm_engine_rs] [LIVE] PROMPT inventory $24.23 > max $20.00 (SHORT) — Suppressing ASKS to reduce risk.
+mm_engine  | [2026-02-23T17:49:33Z INFO  mm_engine_rs] [STICKY] PROMPT orders are within 20% of target. Skipping reset. threshold=0.000011
+mm_engine  | [2026-02-23T17:49:33Z INFO  mm_engine_rs] [STICKY] VVV orders are within 20% of target. Skipping reset. threshold=0.000385
+mm_engine  | [2026-02-23T17:49:33Z WARN  mm_engine_rs] [LIVE] PROMPT inventory $24.24 > max $20.00 (SHORT) — Suppressing ASKS to reduce risk.
+mm_engine  | [2026-02-23T17:49:33Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=1 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:49:34Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:49:35Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052577 sz=228.2041 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:35Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0526 inv=$24.24 placed=1/1 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:35Z WARN  mm_engine_rs] [LIVE] PROMPT inventory $24.24 > max $20.00 (SHORT) — Suppressing ASKS to reduce risk.
+mm_engine  | [2026-02-23T17:49:35Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=1 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:49:36Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:49:37Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052566 sz=228.2497 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:37Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0526 inv=$24.24 placed=1/1 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:37Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:49:38Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:49:39Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.845200 sz=3.1181 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:39Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.849100 sz=3.1181 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:39Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8485 inv=$12.01 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:39Z WARN  mm_engine_rs] [LIVE] PROMPT inventory $24.28 > max $20.00 (SHORT) — Suppressing ASKS to reduce risk.
+mm_engine  | [2026-02-23T17:49:40Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=1 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:49:41Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:49:42Z WARN  mm_engine_rs] [LIVE] PROMPT bid L1 order failed: Invalid Order: Post only order would have immediately matched, bbo was 0.052597@0.052657. asset=188
+mm_engine  | [2026-02-23T17:49:42Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0527 inv=$24.28 placed=0/1 errors=1 regime=1.00x
+mm_engine  | [2026-02-23T17:49:42Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:49:43Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 1/1
+mm_engine  | [2026-02-23T17:49:44Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.845300 sz=3.1181 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:44Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.849100 sz=3.1181 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:44Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8486 inv=$12.01 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:44Z WARN  mm_engine_rs] [LIVE] PROMPT inventory $24.27 > max $20.00 (SHORT) — Suppressing ASKS to reduce risk.
+mm_engine  | [2026-02-23T17:49:45Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=1 o_len=0 all_s=false
+mm_engine  | [2026-02-23T17:49:46Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052637 sz=227.9419 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:46Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0526 inv=$24.27 placed=1/1 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:46Z INFO  mm_engine_rs] [STICKY] VVV orders are within 20% of target. Skipping reset. threshold=0.000385
+mm_engine  | [2026-02-23T17:49:46Z WARN  mm_engine_rs] [LIVE] PROMPT inventory $24.26 > max $20.00 (SHORT) — Suppressing ASKS to reduce risk.
+mm_engine  | [2026-02-23T17:49:46Z INFO  mm_engine_rs] [STICKY] PROMPT orders are within 20% of target. Skipping reset. threshold=0.000011
+mm_engine  | [2026-02-23T17:49:46Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:49:47Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 2/2
+mm_engine  | [2026-02-23T17:49:48Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.844000 sz=3.1191 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:49Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.847900 sz=3.1191 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:49Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8473 inv=$12.00 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:49Z WARN  mm_engine_rs::execution] [RECONCILE] PROMPT internal=-461.000000 live=-5.000000 delta=456.000000 (dark fill detected)
+mm_engine  | [2026-02-23T17:49:49Z INFO  mm_engine_rs] [MAIN] Active screener assets: {"PROMPT", "VVV"}
+mm_engine  | [2026-02-23T17:49:50Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:49:50Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 1/1
+mm_engine  | [2026-02-23T17:49:52Z INFO  mm_engine_rs] [LIVE] VVV bid L1 @ 3.843600 sz=3.1194 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:52Z INFO  mm_engine_rs] [LIVE] VVV ask L1 @ 3.847400 sz=3.1194 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:52Z INFO  mm_engine_rs] [LIVE QUOTE] VVV mid=3.8468 inv=$12.00 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:52Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:49:53Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 1/1
+mm_engine  | [2026-02-23T17:49:54Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052599 sz=227.9181 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:55Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052704 sz=227.9181 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:55Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0527 inv=$0.26 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:55Z INFO  mm_engine_rs] [STICKY-DEBUG] PROMPT not sticky: q_len=2 o_len=2 all_s=false
+mm_engine  | [2026-02-23T17:49:56Z INFO  mm_engine_rs::exchange] [CANCEL COIN] PROMPT — cancelled 2/2
+mm_engine  | [2026-02-23T17:49:57Z INFO  mm_engine_rs] [LIVE] PROMPT bid L1 @ 0.052548 sz=228.1369 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:58Z INFO  mm_engine_rs] [LIVE] PROMPT ask L1 @ 0.052654 sz=228.1369 coins ($12.00)
+mm_engine  | [2026-02-23T17:49:58Z INFO  mm_engine_rs] [LIVE QUOTE] PROMPT mid=0.0526 inv=$0.26 placed=2/2 errors=0 regime=1.00x
+mm_engine  | [2026-02-23T17:49:58Z INFO  mm_engine_rs] [STICKY-DEBUG] VVV not sticky: q_len=2 o_len=1 all_s=false
+mm_engine  | [2026-02-23T17:49:58Z INFO  mm_engine_rs::exchange] [CANCEL COIN] VVV — cancelled 1/1

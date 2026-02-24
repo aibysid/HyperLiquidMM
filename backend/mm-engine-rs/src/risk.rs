@@ -11,7 +11,7 @@ pub struct RiskConfig {
 impl Default for RiskConfig {
     fn default() -> Self {
         Self {
-            max_daily_drawdown_percent: 0.15,
+            max_daily_drawdown_percent: 0.10,
             max_consecutive_losses: 5,
             trading_halt_duration_secs: 3600,
         }

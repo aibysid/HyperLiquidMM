@@ -1,0 +1,80 @@
+[2026-02-24T14:00:32Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV A 3.6 @ 3.2982
+[2026-02-24T14:00:32Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV A 3.6 @ 3.2982
+[2026-02-24T14:11:49Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV A 3.64 @ 3.3327
+[2026-02-24T14:11:49Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV A 3.64 @ 3.3327
+[2026-02-24T14:12:14Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV B 3.64 @ 3.3282
+[2026-02-24T14:12:14Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV B 3.64 @ 3.3282
+[2026-02-24T14:14:13Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] BERA B 0.3 @ 0.61246
+[2026-02-24T14:14:13Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: BERA B 0.3 @ 0.61246
+[2026-02-24T14:24:05Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV B 3.53 @ 3.392
+[2026-02-24T14:24:05Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV B 3.53 @ 3.392
+[2026-02-24T14:31:27Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] BERA B 19.9 @ 0.6022
+[2026-02-24T14:31:27Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: BERA B 19.9 @ 0.6022
+[2026-02-24T14:32:01Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] BERA A 19.9 @ 0.60302
+[2026-02-24T14:32:01Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: BERA A 19.9 @ 0.60302
+[2026-02-24T14:35:47Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] BERA B 19.9 @ 0.60205
+[2026-02-24T14:35:47Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: BERA B 19.9 @ 0.60205
+[2026-02-24T14:40:16Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] BERA A 19.9 @ 0.60732
+[2026-02-24T14:40:16Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: BERA A 19.9 @ 0.60732
+[2026-02-24T14:40:57Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV A 3.44 @ 3.4936
+[2026-02-24T14:40:57Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV A 3.44 @ 3.4936
+[2026-02-24T14:41:08Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] NEAR A 12.5 @ 0.96554
+[2026-02-24T14:41:08Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: NEAR A 12.5 @ 0.96554
+[2026-02-24T14:43:36Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV B 3.35 @ 3.5715
+[2026-02-24T14:43:36Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV B 3.35 @ 3.5715
+[2026-02-24T14:43:57Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV A 3.36 @ 3.5768
+[2026-02-24T14:43:57Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV A 3.36 @ 3.5768
+[2026-02-24T14:45:36Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV B 3.33 @ 3.5971
+[2026-02-24T14:45:36Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV B 3.33 @ 3.5971
+[2026-02-24T14:45:57Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV A 3.34 @ 3.5937
+[2026-02-24T14:45:57Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV A 3.34 @ 3.5937
+[2026-02-24T14:46:26Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] NEAR B 12.5 @ 0.9661
+[2026-02-24T14:46:26Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: NEAR B 12.5 @ 0.9661
+[2026-02-24T14:47:34Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV B 3.36 @ 3.561
+[2026-02-24T14:47:34Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV B 3.36 @ 3.561
+[2026-02-24T14:51:12Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV A 3.43 @ 3.533
+[2026-02-24T14:51:12Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV A 3.43 @ 3.533
+[2026-02-24T14:54:05Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV B 3.38 @ 3.5411
+[2026-02-24T14:54:05Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV B 3.38 @ 3.5411
+[2026-02-24T14:55:23Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] SOL B 0.16 @ 76.991
+[2026-02-24T14:55:23Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: SOL B 0.16 @ 76.991
+[2026-02-24T14:55:34Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV B 3.31 @ 3.5787
+[2026-02-24T14:55:34Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV B 3.31 @ 3.5787
+[2026-02-24T14:55:52Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] AVAX B 0.91 @ 8.3315
+[2026-02-24T14:55:52Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: AVAX B 0.91 @ 8.3315
+[2026-02-24T14:55:53Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] AVAX B 0.53 @ 8.3315
+[2026-02-24T14:55:54Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: AVAX B 0.53 @ 8.3315
+[2026-02-24T14:57:04Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV A 3.37 @ 3.5669
+[2026-02-24T14:57:04Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV A 3.37 @ 3.5669
+[2026-02-24T14:59:01Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] SOL A 0.16 @ 76.764
+[2026-02-24T14:59:01Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: SOL A 0.16 @ 76.764
+[2026-02-24T15:05:07Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV A 3.36 @ 3.5716
+[2026-02-24T15:05:07Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV A 3.36 @ 3.5716
+[2026-02-24T15:06:23Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] SNX A 34.6 @ 0.34786
+[2026-02-24T15:06:23Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: SNX A 34.6 @ 0.34786
+[2026-02-24T15:06:27Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV B 3.36 @ 3.5559
+[2026-02-24T15:06:27Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV B 3.36 @ 3.5559
+[2026-02-24T15:09:36Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] AVAX A 1.44 @ 8.3171
+[2026-02-24T15:09:36Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: AVAX A 1.44 @ 8.3171
+[2026-02-24T15:15:08Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] SNX B 34.6 @ 0.34902
+[2026-02-24T15:15:08Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: SNX B 34.6 @ 0.34902
+[2026-02-24T15:16:21Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV A 3.32 @ 3.5655
+[2026-02-24T15:16:21Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV A 3.32 @ 3.5655
+[2026-02-24T15:17:10Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] FARTCOIN A 83.1 @ 0.14608
+[2026-02-24T15:17:10Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: FARTCOIN A 83.1 @ 0.14608
+[2026-02-24T15:18:16Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VIRTUAL B 20.0 @ 0.59724
+[2026-02-24T15:18:16Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VIRTUAL B 20 @ 0.59724
+[2026-02-24T15:18:16Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] FARTCOIN B 83.1 @ 0.14586
+[2026-02-24T15:18:17Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: FARTCOIN B 83.1 @ 0.14586
+[2026-02-24T15:20:28Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VIRTUAL A 20.0 @ 0.59917
+[2026-02-24T15:20:28Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VIRTUAL A 20 @ 0.59917
+[2026-02-24T15:21:46Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] UNI B 3.6 @ 3.3637
+[2026-02-24T15:21:47Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: UNI B 3.6 @ 3.3637
+[2026-02-24T15:24:13Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] UNI A 3.6 @ 3.3685
+[2026-02-24T15:24:13Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: UNI A 3.6 @ 3.3685
+[2026-02-24T15:24:34Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV B 3.36 @ 3.5606
+[2026-02-24T15:24:34Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV B 3.36 @ 3.5606
+[2026-02-24T15:24:51Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] VVV A 3.39 @ 3.542
+[2026-02-24T15:24:51Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: VVV A 3.39 @ 3.542
+[2026-02-24T15:27:29Z INFO  mm_engine_rs::ingestor] 🔔 [PRIVATE FILL] BERA B 19.1 @ 0.62588
+[2026-02-24T15:27:29Z INFO  mm_engine_rs] 🔔 [PRIVATE FILL] Applying trade: BERA B 19.1 @ 0.62588

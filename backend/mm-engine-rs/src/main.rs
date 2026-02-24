@@ -379,13 +379,31 @@ async fn main() {
                 // ── Phase 9J: LIVE order placement ──────────────────────────────
 
                 // Rate-limit: only refresh orders every 30,000ms (30s) per coin
-                // This resolves the "Too many cumulative requests" deadlock for small accounts.
+                // UNLESS the price has drifted by more than 50% of the spread (Emergency Drift)
                 let now_ms = chrono::Utc::now().timestamp_millis() as u64;
                 let last_refresh = last_trade_ts.get(coin).cloned().unwrap_or(0);
-                if now_ms - last_refresh < 30_000 {
+                
+                let mid = l2_snap.get(coin).and_then(|s| s.mid_price()).unwrap_or(0.0);
+                let drift_bps = if mid > 0.0 && last_refresh > 0 {
+                    let last_mid = last_trade_ts.get(&format!("{}_mid", coin)).cloned().map(|v| v as f64 / 1_000_000.0).unwrap_or(mid);
+                    ((mid - last_mid).abs() / last_mid) * 10_000.0
+                } else {
+                    0.0
+                };
+
+                let drift_limit = config.base_spread_bps * 0.5; // 50% of spread drift
+                let needs_emergency_refresh = drift_bps > drift_limit;
+
+                if now_ms - last_refresh < 30_000 && !needs_emergency_refresh {
                     continue;
                 }
+                
+                if needs_emergency_refresh && now_ms - last_refresh < 30_000 {
+                    log::info!("⚡ [ADAPTIVE] Emergency refresh for {} due to price drift: {:.2} bps", coin, drift_bps);
+                }
+                
                 last_trade_ts.insert(coin.clone(), now_ms);
+                last_trade_ts.insert(format!("{}_mid", coin), (mid * 1_000_000.0) as u64);
 
                 let mut eng = exec_engine.lock().await;
 
