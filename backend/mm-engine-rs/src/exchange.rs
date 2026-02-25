@@ -397,8 +397,16 @@ impl LiveExchange {
         let data: serde_json::Value = serde_json::from_str(&text).map_err(|e| OrderError::NetworkError(e.to_string()))?;
         
         if let Some(err) = data["status"].as_str() {
-            if err == "err" && data["response"]["data"]["error"].as_str().unwrap_or_default().contains("rate limited") {
-                 return Err(OrderError::RateLimited);
+            if err == "err" {
+                let err_msg = if let Some(msg) = data["response"].as_str() {
+                    msg.to_string()
+                } else {
+                    data["response"]["data"]["error"].as_str().unwrap_or_default().to_string()
+                };
+
+                if err_msg.contains("rate limited") || err_msg.contains("cumulative requests") {
+                    return Err(OrderError::RateLimited);
+                }
             }
         }
 

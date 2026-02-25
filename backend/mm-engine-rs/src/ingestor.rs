@@ -120,6 +120,8 @@ pub struct MarketDataBuffer {
     pub contexts: HashMap<String, MarketContext>,
     /// Recent private fills for the user.
     pub user_fills: VecDeque<UserFill>,
+    /// Map of Coin -> Rolling Price History (timestamp, mid_price) for Volatility tracking.
+    pub price_histories: HashMap<String, VecDeque<(u64, f64)>>,
     /// Last time any WS message was received (epoch ms). Used for stall detection.
     pub last_ws_message_ms: u64,
 }
@@ -131,6 +133,7 @@ impl MarketDataBuffer {
             trade_buffers: HashMap::new(),
             contexts: HashMap::new(),
             user_fills: VecDeque::new(),
+            price_histories: HashMap::new(),
             last_ws_message_ms: now_ms(),
         }
     }
@@ -146,7 +149,37 @@ impl MarketDataBuffer {
 
     pub fn update_l2(&mut self, snap: L2BookSnapshot) {
         self.touch();
+        if let Some(mid) = snap.mid_price() {
+            let history = self.price_histories.entry(snap.coin.clone()).or_insert_with(|| VecDeque::with_capacity(600));
+            let now = now_ms();
+            history.push_back((now, mid));
+            
+            // Keep 5 minutes of data (300,000 ms)
+            while history.len() > 1 && (now - history.front().unwrap().0) > 300_000 {
+                history.pop_front();
+            }
+        }
         self.l2_books.insert(snap.coin.clone(), snap);
+    }
+
+    /// Calculates the real-time volatility in basis points (standard deviation of the last 5 mins).
+    pub fn realtime_vol_bps(&self, coin: &str) -> f64 {
+        let history = match self.price_histories.get(coin) {
+            Some(h) if h.len() > 10 => h, // Need at least 10 samples for a meaningful stddev
+            _ => return 0.0,
+        };
+
+        let mids: Vec<f64> = history.iter().map(|(_, p)| *p).collect();
+        let count = mids.len() as f64;
+        let mean = mids.iter().sum::<f64>() / count;
+        
+        let variance = mids.iter().map(|p| {
+            let diff = p - mean;
+            diff * diff
+        }).sum::<f64>() / count;
+
+        let std_dev = variance.sqrt();
+        (std_dev / mean) * 10_000.0 // Convert to BPS
     }
 
     pub fn add_trade(&mut self, trade: Trade) {

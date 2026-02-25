@@ -35,7 +35,7 @@ use market_maker::{
     ShadowSession, ShadowFill, compute_quote_grid,
 };
 use publisher::{MmScreenerSubscriber, MmStatusPublisher};
-use exchange::{SimExchange, LiveExchange};
+use exchange::{SimExchange, LiveExchange, OrderError};
 
 #[tokio::main]
 async fn main() {
@@ -218,8 +218,15 @@ async fn main() {
     let mut last_trade_ts: HashMap<String, u64> = HashMap::new();
     let mut last_active_coins: HashSet<String> = HashSet::new();
 
+    let mut global_rate_limit_until: u64 = 0;
+    
     loop {
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        let now_ms = chrono::Utc::now().timestamp_millis() as u64;
+
+        if now_ms < global_rate_limit_until {
+            continue;
+        }
 
         let is_halted     = exec_engine.lock().await.is_halted();
         if is_halted { continue; }
@@ -248,9 +255,13 @@ async fn main() {
         }
 
         // ── Phase 9B: Snapshot L2 data ────────────────────────────────────────
-        let (l2_snap, trade_snap) = {
+        let (l2_snap, trade_snap, vol_map) = {
             let buf = data_buffer.lock().unwrap();
-            (buf.l2_books.clone(), buf.trade_buffers.clone())
+            let mut vm = HashMap::new();
+            for coin in buf.price_histories.keys() {
+                vm.insert(coin.clone(), buf.realtime_vol_bps(coin));
+            }
+            (buf.l2_books.clone(), buf.trade_buffers.clone(), vm)
         };
 
         // ── Phase 9L: Global State Reconciliation & Flush (every 30s) ──────────────
@@ -303,7 +314,12 @@ async fn main() {
             // Regime update
             let cfr = exec_engine.lock().await.stats.cancel_fill_ratio();
             let p95 = latency_auditor.lock().unwrap().p95_us();
-            regime_governor.lock().unwrap().update(config.atr_fraction, cfr, p95, 0.0);
+            
+            // Use Real-Time Volatility as a dynamic threshold
+            let rt_vol_fraction = vol_map.get(coin).cloned().unwrap_or(0.0) / 10_000.0;
+            let effective_vol = config.atr_fraction.max(rt_vol_fraction);
+            
+            regime_governor.lock().unwrap().update(effective_vol, cfr, p95, 0.0);
 
             // Grid
             let inv_usd = exec_engine.lock().await
@@ -379,7 +395,8 @@ async fn main() {
                 // ── Phase 9J: LIVE order placement ──────────────────────────────
 
                 // Rate-limit: only refresh orders every 30,000ms (30s) per coin
-                // UNLESS the price has drifted by more than 50% of the spread (Emergency Drift)
+                // UNLESS the price has drifted by more than 200% of the spread (Emergency Drift)
+                // OR we have been waiting more than 10 seconds (Hard Cooldown)
                 let now_ms = chrono::Utc::now().timestamp_millis() as u64;
                 let last_refresh = last_trade_ts.get(coin).cloned().unwrap_or(0);
                 
@@ -391,15 +408,18 @@ async fn main() {
                     0.0
                 };
 
-                let drift_limit = config.base_spread_bps * 0.5; // 50% of spread drift
+                let drift_limit = config.base_spread_bps * 2.0; // Widened to 200% of spread to save requests
                 let needs_emergency_refresh = drift_bps > drift_limit;
+                
+                // Hard Cooldown: Never refresh more than once every 10 seconds, even during volatility.
+                let is_in_hard_cooldown = now_ms - last_refresh < 10_000;
 
-                if now_ms - last_refresh < 30_000 && !needs_emergency_refresh {
+                if now_ms - last_refresh < 30_000 && (!needs_emergency_refresh || is_in_hard_cooldown) {
                     continue;
                 }
                 
                 if needs_emergency_refresh && now_ms - last_refresh < 30_000 {
-                    log::info!("⚡ [ADAPTIVE] Emergency refresh for {} due to price drift: {:.2} bps", coin, drift_bps);
+                    log::info!("⚡ [ADAPTIVE] Emergency refresh for {} due to price drift: {:.2} bps (Spreadbps: {:.2})", coin, drift_bps, config.base_spread_bps);
                 }
                 
                 last_trade_ts.insert(coin.clone(), now_ms);
@@ -523,6 +543,11 @@ async fn main() {
                                 "[LIVE] {} {} L{} order failed: {}",
                                 coin, quote.side, quote.layer, e
                             );
+                            if matches!(e, OrderError::RateLimited) {
+                                log::error!("🛑 GLOBAL RATE LIMIT DETECTED (Request Debt). Backing off for 60s.");
+                                global_rate_limit_until = now_ms + 60_000;
+                                break; // Break out of this coin's quote loop
+                            }
                         }
                     }
                 }

@@ -117,10 +117,39 @@ pub fn compute_quote_grid(
     let mut skew_amount  = inv_fraction * effective_spread * 1.2; // Relaxed from 1.5x to allow price reversion
 
     // CAP SKEW TO PREVENT FEE LOSSES ON SOFT EXITS
-    // Maker fees are 1.44 bps. Exits must be at least 5.0 bps away from mid to be profitable.
-    let min_distance_from_mid = mid_price * (5.0 / 10_000.0);
+    // Maker fees are 1.44 bps. Exits must be at least 8.0 bps away from mid to capture meaningful alpha.
+    let min_distance_from_mid = mid_price * (8.0 / 10_000.0);
     let max_allowed_skew = (effective_spread - min_distance_from_mid).max(0.0);
     skew_amount = skew_amount.clamp(-max_allowed_skew, max_allowed_skew);
+
+    // ─── Phase 8.5: Inventory Greed (Asymmetric Profit Skewing) ───────────
+    // Instead of just shifting the grid symmetrically, we widen the "exit" side
+    // to demand more premium when our inventory health is good.
+    let mut bid_greed_mult = 1.0;
+    let mut ask_greed_mult = 1.0;
+
+    if inv_fraction > 0.1 {
+        // We are LONG. We want to sell for MORE.
+        if inv_fraction < 0.7 {
+            ask_greed_mult = 1.0 + (inv_fraction.abs() * 0.8); // Up to 1.56x wider
+        }
+    } else if inv_fraction < -0.1 {
+        // We are SHORT. We want to buy for LESS.
+        if inv_fraction > -0.7 {
+            bid_greed_mult = 1.0 + (inv_fraction.abs() * 0.8); // Up to 1.56x wider
+        }
+    }
+
+    // ─── Phase 8.5: Momentum Scaling (OFI-Based Exit Pushing) ───────────
+    // If the market is moving IN OUR FAVOR, push the exit side even further
+    // to "demand" more profit from the taker.
+    if suppress_bids && inv_fraction < -0.1 {
+        // Aggressive Selling occurring, and we are SHORT (Market moving down - favorable).
+        bid_greed_mult *= 1.3;
+    } else if suppress_asks && inv_fraction > 0.1 {
+        // Aggressive Buying occurring, and we are LONG (Market moving up - favorable).
+        ask_greed_mult *= 1.3;
+    }
 
     // Layer spreads: L2 = 2.5x L1, L3 = 5x L1
     let spreads = [
@@ -162,13 +191,21 @@ pub fn compute_quote_grid(
 
     if config.trend == "up" {
         if inv_usd <= 0.0 {
-            // Trend is UP, we don't want to short cheaply. Push the Ask extremely high and demand premium.
-            ask_trend_skew = effective_spread * 3.0; // Captures an extra 300% spread if filled
+            // Trend is UP, we are Short or flat: Push the Ask extremely high and demand premium.
+            ask_trend_skew = effective_spread * 3.0; 
+        } else {
+            // Trend is UP, we are LONG: We are in the "Green Zone". Don't rush to exit.
+            // Reduce the skew_amount to let profits run.
+            skew_amount *= 0.5;
         }
     } else if config.trend == "down" {
         if inv_usd >= 0.0 {
-            // Trend is DOWN, we don't want to buy cheaply. Push the Bid extremely low and demand discount.
-            bid_trend_skew = effective_spread * 3.0; // Captures an extra 300% spread if filled
+            // Trend is DOWN, we are Long or flat: Push the Bid extremely low and demand discount.
+            bid_trend_skew = effective_spread * 3.0;
+        } else {
+            // Trend is DOWN, we are SHORT: We are in the "Green Zone". Don't rush to exit.
+            // Reduce the skew_amount (which would be negative/pulling bid up) to let profits run.
+            skew_amount *= 0.5;
         }
     }
 
@@ -177,7 +214,7 @@ pub fn compute_quote_grid(
 
         // Bids: placed below mid, shifted down when long (Soft Exit), shifted down when downtrend
         if allow_bids {
-            let sp_final = sp * bid_vol_mult;
+            let sp_final = sp * bid_vol_mult * bid_greed_mult;
             let raw_price = mid_price - sp_final - skew_amount - bid_trend_skew;
             let bid_price = snap_to_tick(round_to_5_sig_figs(raw_price), config.tick_size);
             if bid_price > 0.0 {
@@ -193,7 +230,7 @@ pub fn compute_quote_grid(
 
         // Asks: placed above mid, shifted down when long (Soft Exit), shifted up when uptrend
         if allow_asks {
-            let sp_final = sp * ask_vol_mult;
+            let sp_final = sp * ask_vol_mult * ask_greed_mult;
             let raw_price = mid_price + sp_final - skew_amount + ask_trend_skew;
             let ask_price = snap_to_tick(round_to_5_sig_figs(raw_price), config.tick_size);
             if ask_price > mid_price * 0.9 {
